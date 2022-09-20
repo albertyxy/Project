@@ -1,0 +1,9 @@
+Header header
+float32 FB_Kopfrotation_Gier_Guete
+float32 FB_Kopfposition_Z_Guete
+float32 FB_Kopfposition_Y_Guete
+float32 FB_Kopfposition_X_Guete
+float32 FB_Kopfrotation_Gier
+float32 FB_Kopfposition_Z
+float32 FB_Kopfposition_Y
+float32 FB_Kopfposition_X

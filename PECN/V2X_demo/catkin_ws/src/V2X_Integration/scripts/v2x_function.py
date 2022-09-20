@@ -1,0 +1,183 @@
+#!/usr/bin/env python
+
+import glob
+import os
+import sys
+
+try:
+    sys.path.append(glob.glob('../carla/dist/carla-*%d.%d-%s.egg' % (
+        sys.version_info.major,
+        sys.version_info.minor,
+        'win-amd64' if os.name == 'nt' else 'linux-x86_64'))[0])
+except IndexError:
+    pass
+
+import carla
+import time
+
+from carla_msgs.msg import CarlaEgoVehicleControl
+from V2X_Integration.msg import V2X_Warning
+# from V2X_Integration.msg import CarlaEgoVehicleControl
+
+# carla_msgs/CarlaEgoVehicleControl structure
+# std_msgs/Header header
+# uint32 seq
+# time stamp
+# string frame_id
+# float32 throttle
+# float32 steer
+# float32 brake
+# bool hand_brake
+# bool reverse
+# int32 gear
+# bool manual_gear_shift
+
+import rospy
+from std_msgs.msg import UInt8
+from std_msgs.msg import Header
+from std_msgs.msg import Bool
+from nav_msgs.msg import Odometry
+from std_msgs.msg import String
+
+lane_change_count =0
+
+class VehicleControlCommand(object):
+    def __init__(self):
+        self.throttle = 0.0
+        self.steer = 0.0
+        self.brake = 0.0
+        self.warncount = 0
+        self.cmd = CarlaEgoVehicleControl()
+
+    def stop(self):
+        self.throttle = 0.0
+        self.brake = 1.0
+
+    def lane_change_left(self):
+        self.throttle = 1.0
+        self.steer = -0.1
+    
+    def lane_change_right(self):
+        self.throttle = 1.0
+        self.steer = 0.1
+
+
+    def reset(self):
+        self.throttle = 0.0
+        self.steer = 0.0
+        self.brake = 0.0
+
+    def part_brake(self):
+        self.brake = 0.6
+        self.steer = 0.0
+        self.throttle = 0.0
+
+    def full_brake(self):
+        self.brake = 1.0
+        self.steer = 0.0
+        self.throttle = 0.0
+
+    def accelerate(self):
+        self.brake = 0.0
+        self.steer = 0.0
+        self.throttle = 1.0
+
+    def cmd_apply(self):
+        self.cmd.header = Header()
+        self.cmd.header.stamp = rospy.Time.now()
+        self.cmd.header.frame_id = "vehicle_control_cmd"
+        self.cmd.throttle = self.throttle
+        self.cmd.steer = self.steer
+        self.cmd.brake = self.brake
+        self.cmd.hand_brake = False
+        self.cmd.reverse = False
+        self.cmd.gear = 1
+        self.cmd.manual_gear_shift = False  
+
+
+def fcw_callback(signal):
+    global lane_change_count
+    warning = signal.warning_level
+    if warning == 12:
+        ego_vehicle.set_autopilot(False)
+        vehicle.stop()
+        vehicle.cmd_apply()
+        cmd_pub.publish(vehicle.cmd)
+    if warning == 20:
+        if lane_change_count == 0:
+            lane_change_count = 1 
+            ego_vehicle.set_autopilot(False)
+            vehicle.lane_change_left()
+            vehicle.cmd_apply()
+            cmd_pub.publish(vehicle.cmd)
+            time.sleep(3)
+            vehicle.lane_change_right()
+            vehicle.cmd_apply()
+            cmd_pub.publish(vehicle.cmd)
+            time.sleep(1.0)
+            ego_vehicle.set_autopilot(True)
+            time.sleep(1.5)
+            ego_vehicle.set_autopilot(False)
+            vehicle.accelerate()
+            vehicle.cmd_apply()
+            cmd_pub.publish(vehicle.cmd)
+            time.sleep(5.5)
+            ego_vehicle.set_autopilot(True)
+
+
+# Forward Car warning
+def FCW():
+    global cmd_pub
+    global ego_vehicle
+    global vehicle
+    
+    actor_list = []
+    try:
+        client = carla.Client('127.0.0.1', 2000)
+        client.set_timeout(5.0)
+        world = client.get_world()
+        # find the ego vehicle
+        possible_vehicles = world.get_actors().filter('vehicle.*')
+        for v in possible_vehicles:
+            if v.attributes['role_name'] == "hero":
+                print("Ego vehicle found")
+                ego_vehicle = v
+                break
+        actor_list.append(ego_vehicle)
+        print('created %s' % ego_vehicle.type_id)
+        time.sleep(1)
+
+        # set sync mode
+        settings = world.get_settings()
+        settings.synchronous_mode = True
+        settings.fixed_delta_seconds = 0.025
+        world.apply_settings(settings)
+
+        # set up autopilot
+        ego_vehicle.set_autopilot(True)
+
+        # vehicle control
+        vehicle = VehicleControlCommand()
+        rospy.init_node('fcw', anonymous=True)
+        rospy.Subscriber("/forward_car_warning", V2X_Warning, fcw_callback)
+        cmd_pub = rospy.Publisher("/carla/hero/vehicle_control_cmd", CarlaEgoVehicleControl, queue_size=100)
+        rospy.spin()   
+
+        # manually control
+        # control = ego_vehicle.get_control()
+        # control.throttle = 1.0
+        # control.brake = 0.0
+        # ego_vehicle.apply_control(control)
+
+    finally:
+        print('destroying actors')
+        #camera.destroy()
+        client.apply_batch([carla.command.DestroyActor(x) for x in actor_list])
+        print('done.')       
+
+
+if __name__ == '__main__':
+    FCW()
+
+
+

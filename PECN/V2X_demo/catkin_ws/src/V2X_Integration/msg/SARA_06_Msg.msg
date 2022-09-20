@@ -1,0 +1,9 @@
+Header header
+uint16 SARA_06_CRC
+uint8 SARA_06_BZ
+float32 SARA_Accel_X_010
+float32 SARA_Accel_Y_010
+float32 SARA_Omega_Z_010
+uint8 SARA_CF_Accel_X_010
+uint8 SARA_CF_Accel_Y_010
+uint8 SARA_CF_Omega_Z_010
