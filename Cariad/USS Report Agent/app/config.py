@@ -125,6 +125,16 @@ class DaytonaSettings(BaseModel):
     )
 
 
+class ReportSettings(BaseModel):
+    """USS 报告生成配置"""
+
+    data_root: str = Field("USS Data", description="USS测试数据根目录")
+    template: str = Field(
+        "USS Data/USSDB Test Report Template.pptx", description="统一报告模板路径"
+    )
+    output_dir: str = Field("workspace", description="报告输出目录")
+
+
 class MCPServerConfig(BaseModel):
     """单个 MCP 服务器的配置"""
 
@@ -189,6 +199,9 @@ class AppConfig(BaseModel):
     )
     daytona_config: Optional[DaytonaSettings] = Field(
         None, description="Daytona configuration"
+    )
+    report_config: Optional[ReportSettings] = Field(
+        None, description="USS Report configuration"
     )
 
     class Config:
@@ -314,6 +327,11 @@ class Config:
         else:
             run_flow_settings = RunflowSettings()
 
+        report_config = raw_config.get("report", {})
+        report_settings = None
+        if report_config:
+            report_settings = ReportSettings(**report_config)
+
         # 处理 LLM 覆盖配置，也支持从环境变量读取 api_key
         llm_configs = {}
         for name, override_config in llm_overrides.items():
@@ -335,6 +353,7 @@ class Config:
             "mcp_config": mcp_settings,
             "run_flow_config": run_flow_settings,
             "daytona_config": daytona_settings,
+            "report_config": report_settings,
         }
 
         self._config = AppConfig(**config_dict)
@@ -368,6 +387,11 @@ class Config:
     def run_flow_config(self) -> RunflowSettings:
         """获取运行流程配置"""
         return self._config.run_flow_config
+
+    @property
+    def report_config(self) -> Optional[ReportSettings]:
+        """获取 USS 报告配置"""
+        return self._config.report_config
 
     @property
     def workspace_root(self) -> Path:

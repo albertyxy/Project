@@ -87,28 +87,42 @@ Agent 自动:
    - `Driver Activity: TS_FCT_USS_18  Action-1`
    - `Driver Activity: TS_FCT_USS_18  Action-1 & Action-2`（跨Action组合页）
 
-2. **图片分为两种类型**：
-   - PNG 图片：图表/曲线图
-   - JPEG 图片：现场照片（来自 IMG_XXXX.JPG）
+2. **图片分为两种类型和三种用途**：
+   - PNG 图片（01.PNG, 02.PNG...）：Test Result 列 -- 图表/曲线图
+   - JPEG 图片（IMG_XXXX.JPG）：Test 列 -- 现场照片
+   - **Example 列图片**：模板中自带的参考图片，**始终保留不动**
 
-3. **Slide 与数据文件夹存在三种映射关系**：
+3. **TS_FCT_USS_18 Slide 采用三列布局**：
 
-   **类型 A：简单 1:1 映射**（Slide 3-8, 17）
-   - 一个 Slide 对应一个数据文件夹，图片按文件名排序后一一替换
-   - 注意：Slide 3/4/5 模板有 5 张图但数据仅 4 张，替换时按实际数据文件数量替换，多余模板图片保留不动
+   TS_FCT_USS_18 系列 Slide（9-17）的图片按 left 坐标分为三列：
 
-   **类型 B：N:1 映射**（Slide 9-11 共享 Action1，Slide 15-16 共享 Action3）
-   - 多个 Slide 共享同一个数据文件夹，图片按 Slide 顺序分配：
-     - Action1 共 20 张：Slide 9 → Slide 10 → Slide 11 顺序分配
-     - Action3 共 16 张：Slide 15 → Slide 16 顺序分配
-   - 各 Slide 按模板中实际图片占位数量取对应的图片
+   | 列 | left 位置 | 列名 | 替换策略 |
+   |----|----------|------|---------|
+   | 第1列 | ~1.2 in | **Example** | 保留模板图片不动 |
+   | 第2列 | ~3.7 in | **Test** | 替换为 IMG_XXXX.JPG 照片 |
+   | 第3列 | ~6.3 in | **Test Result** | 替换为 01.PNG 图表 |
+
+   Slide 17 例外：2行 × 3列 = 6张图片（Action4 数据较少）。
+
+4. **非 TS_FCT_USS_18 Slide（3-8）采用简单布局**：
+   - 不区分列，所有图片按 1:1 从数据文件夹替换
+
+5. **Slide 与数据文件夹存在三种映射关系**：
+
+   **类型 A：简单 1:1 映射**（Slide 3-8, 13, 17）
+   - 一个 Slide 对应一个数据文件夹
+   - 非 TS_FCT_USS_18：全部图片一一替换
+   - TS_FCT_USS_18（Slide 13, 17）：列模式，Example 保留
+
+   **类型 B：N:1 共享映射**（Slide 9-11 共享 Action1，Slide 15-16 共享 Action3）
+   - 多个连续 Slide 共享同一个数据文件夹
+   - JPG 和 PNG 分别独立分配：按 Slide 顺序，每页取 test_count 张 JPG + test_result_count 张 PNG
 
    **类型 C：跨文件夹组合映射**（Slide 12, 14）
-   - Slide 12：取 Action1 的最后 N 张 + Action2 的前 M 张（N + M = 模板图片数 9）
-   - Slide 14：取 Action2 的最后 N 张 + Action3 的前 M 张（N + M = 模板图片数 9）
-   - 这种"首尾接续"体现了测试数据的连续性（连续 Action 之间的过渡）
+   - Action1 的尾部 JPG/PNG + Action2 的头部 JPG/PNG（Slide 12）
+   - Action2 的尾部 JPG/PNG + Action3 的头部 JPG/PNG（Slide 14）
 
-4. **非测试数据页**（Slide 1, 2, 18）：
+6. **非测试数据页**（Slide 1, 2, 18）：
    - 封面（Slide 1）：标题和作者文字，不需要图片替换
    - 车辆配置（Slide 2）：仅表格，数据可能需要手动填入
    - 参数概览（Slide 18）：1 张图片 + 表格，图片来源待确认
@@ -335,24 +349,37 @@ parameters = {
 #### 3.3 图片替换策略（关键）
 
 ```
-替换原则: 按 PPT 模板中图片的出现顺序（坐标排序），从数据文件夹中按序取图替换
+替换模式分为两种:
 
-对于 Slide 中的每张图片：
-1. 记录原图片的位置 (left, top) 用于排序，以及 width, height 用于新图尺寸
-2. 从分配到的图片列表中按序取一张
-3. PNG 文件 → 替换 Slide 中的 PNG 图片；JPG 文件 → 替换 JPEG 图片
-4. 使用 PIL 打开新图片，必要时进行格式转换
-5. 在相同位置插入新图片，保持原尺寸（等比缩放居中裁剪）
-6. 删除原图片 shape
+【简单模式】(非 TS_FCT_USS_18 的 Slide: 3-8)
+  - 全部图片 1:1 按序替换
+  - 数量不匹配时有多少换多少，多余保留
 
-数量不匹配处理:
-  - PPT 图片数 >= 数据文件数: 有多少换多少，剩余 PPT 图片保留不动
-  - PPT 图片数 < 数据文件数: 按序使用前 N 张，多余的跳过
+【列模式】(TS_FCT_USS_18 的 Slide: 9-17)
+  三列布局识别:
+    用 left 坐标聚类算法自动识别 Example / Test / Test Result 三列
+    
+  Example 列 (最左，~1.2in):
+    → 跳过，保留模板中的参考图片不动
+    
+  Test 列 (中间，~3.7in):
+    → 替换为 IMG_XXXX.JPG 照片（从 JPG 通道按序取）
+    
+  Test Result 列 (最右，~6.3in):
+    → 替换为 01.PNG 图表（从 PNG 通道按序取）
 
-共享文件夹的图片指针:
-  - 对每个文件夹维护一个 consumed 计数器
-  - 跨 Slide 连续使用时指针不重置（类型 B）
-  - 类型 C 取尾部图片时不推进指针（是"借阅"尾部数据）
+  共享文件夹 (类型 B):
+    JPG 和 PNG 指针各自独立，跨 Slide 连续消耗
+    
+  组合页 (类型 C):
+    取前一文件夹的尾部 JPG/PNG + 后一文件夹的头部 JPG/PNG
+
+替换操作:
+  1. 记录原图片的位置 (left, top, width, height)
+  2. 从分配到的图片列表中按序取一张（JPG→Test列, PNG→Test Result列）
+  3. 使用 PIL 打开新图片，必要时进行格式转换（MPO→PNG）
+  4. 在相同位置插入新图片，通过 XML 操作保持 z-order
+  5. 删除原图片 shape
 ```
 
 ---
@@ -443,15 +470,17 @@ Agent 自动执行:
   │ Step 3: ppt_report.build_mapping         │
   │   输入: template_path + data_dir          │
   │   输出: 映射结果                           │
-  │     - 类型A (1:1): 6组匹配 (Slide 3-8)     │
-  │     - 类型B (N:1): 2组 (Action1→Slide 9-11,│
-  │                         Action3→Slide 15-16)│
-  │     - 类型C (跨文件夹): 2组 (Slide 12, 14) │
+  │     - 简单模式: 6页 (Slide 3-8, 1:1替换)   │
+  │     - 列模式: 9页 (Slide 9-17, 三列布局)   │
+  │       · 类型B (N:1): 2组共享 (Action1/3)   │
+  │       · 类型C (跨文件夹): 2组 (Slide 12,14) │
   │     - 非测试页: 3页 (Slide 1, 2, 18)      │
   │                                          │
   │ Step 4: ppt_report.generate_report       │
   │   输入: template_path + data_dir          │
-  │   输出: 正在替换Slide 3/18...生成成功      │
+  │   输出: 简单模式替换16张 + 列模式替换52张   │
+  │         (Test列26 JPG + Test Result列26 PNG)│
+  │         Example列模板图片全部保留          │
   │                                          │
   │ Step 5: terminate                        │
   │   返回: "报告已生成到 workspace/xxx.pptx"  │
@@ -574,31 +603,57 @@ Slide 14: ["TS_FCT_USS_18_Action2", "TS_FCT_USS_18_Action3"]
 注意: 由于类型 B 已经消耗了一部分图片，组合页取图时应基于"已消耗后"的指针位置。
 ```
 
-### 6.4 图片替换的执行顺序
+### 6.4 列分类算法
+
+TS_FCT_USS_18 系列 Slide 需要通过 left 坐标聚类来识别三列：
 
 ```
-图片替换必须按 PPT 中图片的原始出现顺序进行（即 shape 的 left→top 坐标排序）:
+算法: 列聚类 (COLUMN_TOLERANCE_EMU = 150000, ~0.16 inch)
 
+1. 收集 Slide 中所有图片 shape
+2. 按 left 坐标升序排序
+3. 相邻 left 值差值 <= 容差 → 归入同一列
+4. 差值 > 容差 → 新开一列
+5. 按各列的 left 均值升序排列
+6. 映射: 最左 → Example, 中间 → Test, 最右 → Test Result
+
+示例 (Slide 9):
+  图片 left: [1.2, 1.2, 1.2, 3.7, 3.7, 3.7, 6.3, 6.4, 6.4] (inch)
+  聚类结果: [[0,1,2]=Example, [3,4,5]=Test, [6,7,8]=Test Result]
+```
+
+### 6.5 图片替换的执行顺序
+
+```
+整体流程:
 1. 对所有 Slide 按编号排序，建立映射关系
-2. 识别共享组（类型 B）和组合组（类型 C）
-3. 为每个数据文件夹计算"已消耗指针"（跨 Slide 共享状态）
-4. 按 Slide 编号顺序逐一执行替换:
-   - 获取该 Slide 的图片列表（按坐标排序）
-   - 根据映射类型获取对应的源图片列表
-   - 一一替换: 保持原位置/尺寸, 替换图片内容
-5. 保存生成的 PPT
+2. 识别 TS_FCT_USS_18 系列 → column_mode = True
+3. 识别共享组（类型 B）和组合组（类型 C）
+4. 为每个数据文件夹创建 FolderImageCursor（JPG/PNG 独立指针）
+
+简单模式 (非 TS_FCT_USS_18):
+  收集 Slide 所有图片 → 从文件夹按序取图 → 1:1 替换
+
+列模式 (TS_FCT_USS_18):
+  1. 用列聚类算法分类每张图片为 Example / Test / Test Result
+  2. Example 列 → 跳过（保留模板图片不动）
+  3. Test 列 → 从 JPG 通道按序取图替换
+  4. Test Result 列 → 从 PNG 通道按序取图替换
+  5. 类型 B 共享组：JPG/PNG 指针跨 Slide 连续消耗
+  6. 类型 C 组合页：取前一文件夹尾部 + 后一文件夹头部
 
 共享状态管理:
   class FolderImageCursor:
       folder_path: str
-      all_images: list[str]  (已排序的完整图片列表)
-      consumed: int = 0      (已消耗数量)
+      jpg_images: list[str]    # JPG 文件（已排序）
+      png_images: list[str]    # PNG 文件（已排序）
+      jpg_consumed: int = 0    # JPG 已消耗数量
+      png_consumed: int = 0    # PNG 已消耗数量
       
-      def take(self, count: int) -> list[str]:
-          '''取 count 张图片，返回路径列表，并推进指针'''
-          
-      def take_last(self, count: int) -> list[str]:
-          '''从末尾取 count 张图片'''
+      def take_jpg(count) -> list[str]   # 从头部取 JPG
+      def take_png(count) -> list[str]   # 从头部取 PNG
+      def take_last_jpg(count) -> list[str]  # 从尾部取 JPG（类型 C）
+      def take_last_png(count) -> list[str]  # 从尾部取 PNG（类型 C）
 ```
 
 ### 6.5 非测试数据页处理
