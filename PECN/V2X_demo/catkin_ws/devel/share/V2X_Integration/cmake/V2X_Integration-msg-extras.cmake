@@ -1,0 +1,2 @@
+set(V2X_Integration_MESSAGE_FILES "/home/carla/Documents/AlbertYao/V2X_demo/catkin_ws/src/V2X_Integration/msg/BSM.msg;/home/carla/Documents/AlbertYao/V2X_demo/catkin_ws/src/V2X_Integration/msg/ESP_21_Msg.msg;/home/carla/Documents/AlbertYao/V2X_demo/catkin_ws/src/V2X_Integration/msg/FB_05_Msg.msg;/home/carla/Documents/AlbertYao/V2X_demo/catkin_ws/src/V2X_Integration/msg/SARA_06_Msg.msg;/home/carla/Documents/AlbertYao/V2X_demo/catkin_ws/src/V2X_Integration/msg/V2X_Warning.msg")
+set(V2X_Integration_SERVICE_FILES "")
