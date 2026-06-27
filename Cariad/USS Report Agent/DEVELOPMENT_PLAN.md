@@ -8,11 +8,10 @@
 
 ```
 USS Data/
-├── USSDB Test Report Template.pptx              ← 统一模板（所有报告共用）
-├── Q6 etron USSDB R4.1 Test/                    ← 测试项目数据
-│   ├── Q6_TF094_0662_USSDB_TS_FCT_USS_4.mf4     ← 原始测量数据（报告生成不使用）
-│   ├── Q6_TF094_0662_USSDB_TS_FCT_USS_7.mf4
-│   ├── ...（共10个 .mf4 文件）
+├── USSDB Test Report Template.pptx              ← 统一模板（所有报告共用，~50MB）
+├── E6L USSDB R4.1 Test/                         ← 测试项目数据（示例）
+│   ├── HAUN3BGG0S5200119_*.xml                   ← iDEX 诊断报告（Slide 1/2 元数据来源）
+│   ├── HAUN3BGG0S5200119_*.html                  ← 诊断报告 HTML 版
 │   ├── TS_FCT_USS_4/                             ← 与 Slide 3 对应
 │   │   └── 01.PNG ~ 04.PNG
 │   ├── TS_FCT_USS_7/                             ← 与 Slide 4 对应
@@ -25,32 +24,38 @@ USS Data/
 │   │   └── 01.PNG
 │   ├── TS_FCT_USS_16/                            ← 与 Slide 8 对应
 │   │   └── 01.PNG
-│   ├── TS_FCT_USS_18_Action1/                    ← 与 Slide 9-11 对应（3个Slide共享）
-│   │   ├── 01.PNG ~ 10.PNG  (图表)
-│   │   └── IMG_2951.JPG ~ IMG_2960.JPG  (照片)
-│   ├── TS_FCT_USS_18_Action2/                    ← 与 Slide 13 对应
-│   │   ├── 01.PNG ~ 06.PNG  (图表)
-│   │   └── IMG_2961.JPG ~ IMG_2966.JPG  (照片)
-│   ├── TS_FCT_USS_18_Action3/                    ← 与 Slide 15-16 对应（2个Slide共享）
-│   │   ├── 01.PNG ~ 08.PNG  (图表)
-│   │   └── IMG_2967.JPG ~ IMG_2974.JPG  (照片)
+│   ├── TS_FCT_USS_18_Action1/                    ← 与 Slide 9-11 对应（3页共享）
+│   │   ├── Action1_01.PNG ~ Action1_10.PNG (图表)
+│   │   └── IMG_2915.JPG ~ IMG_2924.JPG (照片)
+│   ├── TS_FCT_USS_18_Action2/                    ← 与 Slide 12-14 关联
+│   │   ├── Action2_01.PNG ~ Action2_06.PNG (图表)
+│   │   └── IMG_2925.JPG ~ IMG_2930.JPG (照片)
+│   ├── TS_FCT_USS_18_Action3/                    ← 与 Slide 14-16 关联（2页共享）
+│   │   ├── Action3_01.PNG ~ Action3_08.PNG (图表)
+│   │   └── IMG_2931.JPG ~ IMG_2938.JPG (照片)
 │   └── TS_FCT_USS_18_Action4/                    ← 与 Slide 17 对应
-│       ├── 01.PNG ~ 02.PNG  (图表)
-│       └── IMG_2975.JPG ~ IMG_2976.JPG  (照片)
+│       ├── Action4_01.PNG ~ Action4_02.PNG (图表)
+│       └── IMG_2939.JPG ~ IMG_2940.JPG (照片)
 ```
 
-> **关于 .mf4 文件**：项目目录下有 10 个 .mf4 原始测量数据文件（ASAM MDF 格式），与测试用例一一对应。当前报告生成仅使用已导出的 PNG/JPG 图片，不涉及 .mf4 文件解析。
+> **关于 .mf4 文件**：原始测量数据文件（ASAM MDF 格式），报告生成不使用。
+>
+> **关于 .xml 文件**：iDEX 诊断报告，用于自动填充 Slide 1 标题和 Slide 2 表格（Vehicle/VIN/HCP1/EPS）。
+>
+> **关于 .html 文件**：诊断报告 HTML 版本，程序不使用。
 
 ### 核心场景
 
 ```
-用户: "帮我做 Q6 etron USSDB R4.1 Test 的测试报告"
+用户: "帮我做 E6L USSDB R4.1 Test 的测试报告"
 
 Agent 自动:
-  1. 扫描 USS Data/ 目录，根据项目名找到对应的数据文件夹
-  2. 加载统一模板 USS Data/USSDB Test Report Template.pptx
+  1. find_project 扫描 USS Data/ 定位项目文件夹
+  2. 解析 .xml 提取 Vehicle/VIN/HCP1/EPS → 填充 Slide 1/2
   3. 分析模板 Slide 结构，匹配数据子文件夹中的图片
-  4. 替换图片，生成报告到 workspace/
+  4. 按列模式替换 Slide 图片，生成报告到 workspace/
+  
+输出: workspace/E6L USSDB R4.1 Test_Report.pptx (~60MB)
 ```
 
 ---
@@ -80,52 +85,12 @@ Agent 自动:
 | 17 | `TS_FCT_USS_18 Action-4` | 测试结果 | 6 | TS_FCT_USS_18_Action4 | 2 PNG + 2 JPG |
 | 18 | (无) | 参数概览 | 1 | -- | -- |
 
-### 关键发现
+### 关键发现（详见第六节核心算法）
 
-1. **每张测试结果页的 TextBox 中包含测试用例标识**，如：
-   - `Driver Activity: TS_FCT_USS_4`
-   - `Driver Activity: TS_FCT_USS_18  Action-1`
-   - `Driver Activity: TS_FCT_USS_18  Action-1 & Action-2`（跨Action组合页）
-
-2. **图片分为两种类型和三种用途**：
-   - PNG 图片（01.PNG, 02.PNG...）：Test Result 列 -- 图表/曲线图
-   - JPEG 图片（IMG_XXXX.JPG）：Test 列 -- 现场照片
-   - **Example 列图片**：模板中自带的参考图片，**始终保留不动**
-
-3. **TS_FCT_USS_18 Slide 采用三列布局**：
-
-   TS_FCT_USS_18 系列 Slide（9-17）的图片按 left 坐标分为三列：
-
-   | 列 | left 位置 | 列名 | 替换策略 |
-   |----|----------|------|---------|
-   | 第1列 | ~1.2 in | **Example** | 保留模板图片不动 |
-   | 第2列 | ~3.7 in | **Test** | 替换为 IMG_XXXX.JPG 照片 |
-   | 第3列 | ~6.3 in | **Test Result** | 替换为 01.PNG 图表 |
-
-   Slide 17 例外：2行 × 3列 = 6张图片（Action4 数据较少）。
-
-4. **非 TS_FCT_USS_18 Slide（3-8）采用简单布局**：
-   - 不区分列，所有图片按 1:1 从数据文件夹替换
-
-5. **Slide 与数据文件夹存在三种映射关系**：
-
-   **类型 A：简单 1:1 映射**（Slide 3-8, 13, 17）
-   - 一个 Slide 对应一个数据文件夹
-   - 非 TS_FCT_USS_18：全部图片一一替换
-   - TS_FCT_USS_18（Slide 13, 17）：列模式，Example 保留
-
-   **类型 B：N:1 共享映射**（Slide 9-11 共享 Action1，Slide 15-16 共享 Action3）
-   - 多个连续 Slide 共享同一个数据文件夹
-   - JPG 和 PNG 分别独立分配：按 Slide 顺序，每页取 test_count 张 JPG + test_result_count 张 PNG
-
-   **类型 C：跨文件夹组合映射**（Slide 12, 14）
-   - Action1 的尾部 JPG/PNG + Action2 的头部 JPG/PNG（Slide 12）
-   - Action2 的尾部 JPG/PNG + Action3 的头部 JPG/PNG（Slide 14）
-
-6. **非测试数据页**（Slide 1, 2, 18）：
-   - 封面（Slide 1）：标题和作者文字，不需要图片替换
-   - 车辆配置（Slide 2）：仅表格，数据可能需要手动填入
-   - 参数概览（Slide 18）：1 张图片 + 表格，图片来源待确认
+1. TestBox 中 `Driver Activity: TS_FCT_USS_X` 标识 → 正则提取 → 匹配数据文件夹
+2. TS_FCT_USS_18 Slide（9-17）：三列布局（Example / Test / Test Result），按列替换
+3. 非 TS_FCT_USS_18 Slide（3-8）：简单 1:1 全部替换
+4. Slide 1/2：从 XML 填充标题和表格数据（详见 6.6 节）
 
 ---
 
@@ -180,8 +145,8 @@ PyYAML~=6.0.2           # 已有
 
 system_instruction: |
   你具备 PPT 报告自动生成能力。当用户要求生成测试报告时，你需要：
-  1. 根据用户提到的项目名称，在 USS Data 目录下找到对应的项目文件夹
-  2. 在该文件夹中找到 .pptx 模板文件
+  1. 根据用户提到的项目名称，使用 ppt_report 工具在 USS Data 目录下定位项目
+  2. 模板固定为 USS Data 目录下的 USSDB Test Report Template.pptx，find_project 会自动返回
   3. 使用 ppt_report 工具分析模板、建立映射、替换图片
   4. 将生成的报告保存到 workspace 目录
 
@@ -327,60 +292,19 @@ parameters = {
 - 返回结构化分析结果
 
 ##### `build_mapping(template_path: str, data_dir: str) -> dict`
-- 调用 `analyze_template()` 获取 PPT 结构
-- 扫描 data_dir 下的子文件夹
-- 通过正则匹配 "Driver Activity: TS_FCT_USS_X" ↔ 子文件夹名
-- **识别三种映射类型**（详见第六节）：
-  - 类型 A（1:1）：一个 Slide 对应一个文件夹
-  - 类型 B（N:1）：多个连续 Slide 共享一个文件夹，按顺序分配图片
-  - 类型 C（跨文件夹）：Slide 含 `&` 连接符，取前一个文件夹的尾部 + 后一个文件夹的头部
-- 返回映射结果（不写文件，直接返回给 Agent）
+- 分析模板 + 扫描数据目录 → 建立 Slide↔文件夹映射
+- 自动识别三种映射类型（详见第六节 6.3）
 
 ##### `generate_report(template_path, data_dir, output_path=None) -> str`
-- 内部调用 `build_mapping()` 获取映射
-- 用 python-pptx 打开模板
-- **按 Slide 编号顺序执行替换**，维护每个数据文件夹的"已消耗指针"：
-  - 类型 A：从文件夹取图，一一替换，不足时缺几张换几张
-  - 类型 B：同一文件夹按 Slide 顺序连续消耗，记录已消耗 offset
-  - 类型 C：从两个文件夹分别取尾部/头部图片，组合替换
-- 保存到 output_path（默认 `workspace/{project_name}_Report.pptx`）
-- 返回操作结果摘要，包含每种类型的处理统计
+- 一键完成：XML 元数据填充 → 列模式预分配 → 按 Slide 顺序替换图片 → 保存
+- 内部自动处理所有映射类型和列分类（详见第六节 6.4、6.5）
 
-#### 3.3 图片替换策略（关键）
+#### 3.3 图片替换策略
 
-```
-替换模式分为两种:
-
-【简单模式】(非 TS_FCT_USS_18 的 Slide: 3-8)
-  - 全部图片 1:1 按序替换
-  - 数量不匹配时有多少换多少，多余保留
-
-【列模式】(TS_FCT_USS_18 的 Slide: 9-17)
-  三列布局识别:
-    用 left 坐标聚类算法自动识别 Example / Test / Test Result 三列
-    
-  Example 列 (最左，~1.2in):
-    → 跳过，保留模板中的参考图片不动
-    
-  Test 列 (中间，~3.7in):
-    → 替换为 IMG_XXXX.JPG 照片（从 JPG 通道按序取）
-    
-  Test Result 列 (最右，~6.3in):
-    → 替换为 01.PNG 图表（从 PNG 通道按序取）
-
-  共享文件夹 (类型 B):
-    JPG 和 PNG 指针各自独立，跨 Slide 连续消耗
-    
-  组合页 (类型 C):
-    取前一文件夹的尾部 JPG/PNG + 后一文件夹的头部 JPG/PNG
-
-替换操作:
-  1. 记录原图片的位置 (left, top, width, height)
-  2. 从分配到的图片列表中按序取一张（JPG→Test列, PNG→Test Result列）
-  3. 使用 PIL 打开新图片，必要时进行格式转换（MPO→PNG）
-  4. 在相同位置插入新图片，通过 XML 操作保持 z-order
-  5. 删除原图片 shape
-```
+详见第六节核心算法。要点：
+- **简单模式**（Slide 3-8）：1:1 替换全部图片
+- **列模式**（Slide 9-17）：left 坐标聚类识别三列，Example 保留、Test→JPG、Test Result→PNG
+- **格式兼容**：MPO（iPhone 照片）转 JPEG(q=85)，限制 1920px，输出 ~60MB
 
 ---
 
@@ -455,38 +379,31 @@ from app.tool.ppt_report_tool import PPTReportTool
 
 ```
 用户: python main.py
-  请输入你的提示: 帮我做 Q6 etron USSDB R4.1 Test 的测试报告
+  请输入你的提示: 帮我做 E6L USSDB R4.1 Test 的测试报告
 
 Agent 自动执行:
   ┌──────────────────────────────────────────┐
   │ Step 1: ppt_report.find_project          │
-  │   输入: project_name="Q6 etron USSDB..."  │
-  │   输出: 找到项目目录 + 模板 + 10个数据文件夹│
+  │   输入: project_name="E6L USSDB..."       │
+  │   输出: 找到项目目录 + 模板路径             │
   │                                          │
-  │ Step 2: ppt_report.analyze_template      │
-  │   输入: template_path="..."               │
-  │   输出: 18个Slide, 共98张图片             │
+  │ Step 2: ppt_report.generate_report       │
+  │   内部自动完成:                            │
+  │   - 解析 XML → 填充 Slide 1/2 元数据      │
+  │   - analyze_template → 18页, 98张图片     │
+  │   - build_mapping → 简单模式6页 + 列模式9页│
+  │     · 类型B (N:1): 2组 (Action1/3)        │
+  │     · 类型C (跨文件夹): 2组 (Slide 12,14)  │
+  │   - 图片替换: 简单模式19张 + 列模式52张    │
+  │     (Test列26 JPG + Test Result列26 PNG)  │
+  │     Example列模板图片全部保留              │
+  │   输出: ~60MB                             │
   │                                          │
-  │ Step 3: ppt_report.build_mapping         │
-  │   输入: template_path + data_dir          │
-  │   输出: 映射结果                           │
-  │     - 简单模式: 6页 (Slide 3-8, 1:1替换)   │
-  │     - 列模式: 9页 (Slide 9-17, 三列布局)   │
-  │       · 类型B (N:1): 2组共享 (Action1/3)   │
-  │       · 类型C (跨文件夹): 2组 (Slide 12,14) │
-  │     - 非测试页: 3页 (Slide 1, 2, 18)      │
-  │                                          │
-  │ Step 4: ppt_report.generate_report       │
-  │   输入: template_path + data_dir          │
-  │   输出: 简单模式替换16张 + 列模式替换52张   │
-  │         (Test列26 JPG + Test Result列26 PNG)│
-  │         Example列模板图片全部保留          │
-  │                                          │
-  │ Step 5: terminate                        │
+  │ Step 3: terminate                        │
   │   返回: "报告已生成到 workspace/xxx.pptx"  │
   └──────────────────────────────────────────┘
 
-输出: workspace/Q6 etron USSDB R4.1 Test_Report.pptx
+输出: workspace/E6L USSDB R4.1 Test_Report.pptx
 ```
 
 ---
@@ -545,22 +462,20 @@ Slide 文本中只提取到**一个**标识，且该标识对应**独立**的数
 **多个连续 Slide** 共享**同一个**数据文件夹，图片按 Slide 顺序**连续分配**。
 
 ```
-TS_FCT_USS_18_Action1 (20 张: 10 PNG + 10 JPG):
-  Slide 9  (9 张)  → 取 01.PNG ~ 05.PNG + IMG_2951.JPG ~ IMG_2955.JPG (前9张)
-  Slide 10 (9 张)  → 取 06.PNG ~ 09.PNG + IMG_2956.JPG ~ IMG_2960.JPG (中间9张)
-  Slide 11 (9 张)  → 取 10.PNG + IMG_2951.JPG ~ IMG_2955.JPG (最后2张，回绕复用)
+TS_FCT_USS_18_Action1 (10 JPG + 10 PNG):
+  JPG 通道 (Test 列): Slide 9→IMG[0:3], Slide 10→IMG[3:6], Slide 11→IMG[6:9]
+  PNG 通道 (Test Result 列): Slide 9→PNG[0:3], Slide 10→PNG[3:6], Slide 11→PNG[6:9]
+  每页各 3 张 JPG + 3 张 PNG = 6 张替换 (Example 列 3 张保留)
 
-  Slide 9 → Slide 10 → Slide 11 连续消耗数据文件夹中的图片
-
-TS_FCT_USS_18_Action3 (16 张: 8 PNG + 8 JPG):
-  Slide 15 (9 张)  → 取前 9 张
-  Slide 16 (9 张)  → 取后 7 张（不足9张则有多少替换多少）
+TS_FCT_USS_18_Action3 (8 JPG + 8 PNG):
+  JPG: Slide 15→IMG[0:3], Slide 16→IMG[3:6] (Slide 14 先用掉 2 张头部)
+  PNG: Slide 15→PNG[0:3], Slide 16→PNG[3:6]
 
 处理方式:
   1. 识别出所有指向同一文件夹的连续 Slide
-  2. 将该文件夹的所有图片按文件名排序
-  3. 按母版中每页的实际图片数，顺序分配
-  4. 每页先分配 PNG，再分配 JPG（与母版中图片出现顺序一致）
+  2. JPG 和 PNG 各自独立排序，各自维护消耗指针
+  3. 按 Slide 顺序，每页取 test_count 张 JPG + test_result_count 张 PNG
+  4. 所有列模式 Slide 严格按编号顺序分配（Type C 在 Type B 前消耗）
 ```
 
 **关键算法**：如何判断多个 Slide 共享同一数据文件夹？
@@ -656,13 +571,21 @@ TS_FCT_USS_18 系列 Slide 需要通过 left 坐标聚类来识别三列：
       def take_last_png(count) -> list[str]  # 从尾部取 PNG（类型 C）
 ```
 
-### 6.5 非测试数据页处理
+### 6.6 Slide 1/2 元数据填充（XML）
 
-| Slide | 类型 | 处理方式 |
-|-------|------|---------|
-| 1 (封面) | 标题 + 作者 | 从 `find_project` 返回的 project_name 自动填充标题；作者信息从配置读取 |
-| 2 (车辆配置) | 表格 | 保留模板原样，必要时手动编辑 |
-| 18 (参数概览) | 图片 + 表格 | 如有对应图片则替换，表格保留原样 |
+数据来源：项目目录下的 iDEX XML（`{VIN}_*.xml`），使用 `xml.etree.ElementTree` 解析。
+
+**Slide 1 标题**：`UserProjekt`（如 `AU511/x E6 Limo China`）→ 正则提取车型 → `E6L USSDB R4.1 Test Report`
+
+**Slide 2 表格**：
+
+| 行 | ECU 匹配 | 各列 XML 来源 |
+|----|---------|-------------|
+| Row 1 | -- | Vehicle: `UserProjekt`, VIN: `Fahrgestellnummer` |
+| Row 3 (HCP1) | `Systembezeichnung` 含 `HCP1` | `SWTeilenummer`, `SWVersion`, `ZdcName [ZdcVersion]`, `HWTeilenummer`, `HWVersion` |
+| Row 4 (EPS) | `Systembezeichnung` 含 `EPS` | 同上 |
+
+> 通过修改 `run.text` 保持原有字体样式；无 XML 时降级跳过。`_generate_report` 自动调用。
 
 ---
 
@@ -679,6 +602,8 @@ TS_FCT_USS_18 系列 Slide 需要通过 left 坐标聚类来识别三列：
 | `config/config.toml` | **修改** | 添加 [report] 配置段 |
 | `requirements.txt` | **修改** | 添加 python-pptx 依赖 |
 
+> XML 解析使用 Python 标准库 `xml.etree.ElementTree`，无需额外依赖。
+>
 > **不再需要** `generate_report.py`、`app/agent/report_agent.py`——用户统一通过 `python main.py` 使用。
 
 ---
@@ -687,7 +612,7 @@ TS_FCT_USS_18 系列 Slide 需要通过 left 坐标聚类来识别三列：
 
 | 优先级 | 任务 | 说明 |
 |--------|------|------|
-| P0 | `app/tool/ppt_report_tool.py` | 核心工具，包含 5 个操作 + 三种映射类型 + `FolderImageCursor` 共享状态管理 |
+| P0 | `app/tool/ppt_report_tool.py` | 核心工具，包含 5 个 actions + 列聚类 + JPG/PNG 独立指针 + XML 元数据填充 |
 | P0 | `app/prompt/report.yaml` | 所有报告相关 prompt |
 | P1 | `app/prompt/manus.py` 修改 | 加载 YAML prompt |
 | P1 | `app/agent/manus.py` 修改 | 添加 PPTReportTool |
@@ -695,7 +620,7 @@ TS_FCT_USS_18 系列 Slide 需要通过 left 坐标聚类来识别三列：
 | P2 | `app/config.py` 修改 | 添加 ReportSettings |
 | P2 | `config/config.toml` 修改 | 添加 [report] 配置段 |
 
-> 建议先在 `ppt_report_tool.py` 中完成**类型 A**（最简单的 1:1 映射）并用 Slide 3-8 验证，再实现**类型 B**（N:1 共享），最后实现**类型 C**（跨文件夹组合）。循序渐进可降低调试复杂度。
+> 所有路径基于 `PROJECT_ROOT`（由 `config.py` 从 `__file__` 计算），不依赖 cwd，任何人 clone 后直接可用。
 
 ---
 
@@ -712,17 +637,17 @@ pip install python-pptx
 python main.py
 
 # 4. 输入需求
-请输入你的提示: 帮我做 Q6 etron USSDB R4.1 Test 的测试报告
+请输入你的提示: 帮我做 E6L USSDB R4.1 Test 的测试报告
 ```
 
 验证内容：
-1. Agent 正确找到 USS Data 下的项目文件夹和模板（共 10 个数据文件夹）
-2. 模板分析正确（18 页，16 页含 Driver Activity 标识）
-3. Slide → 数据映射正确：
-   - 类型 A（1:1）：Slide 3-8, 13, 17 映射正确，数量不足时正确处理
-   - 类型 B（N:1）：Slide 9-11（共享 Action1）和 Slide 15-16（共享 Action3）按顺序分配图片
-   - 类型 C（跨文件夹）：Slide 12（Action1+Action2）和 Slide 14（Action2+Action3）正确合并
-4. 图片替换后位置、尺寸与原始模板一致
-5. 非测试页（Slide 1, 2, 18）保留模板原样
-6. 报告正确输出到 workspace 目录
-7. 返回的摘要包含每种类型的处理统计
+1. Agent 正确找到 USS Data 下的项目文件夹，模板路径指向 USS Data 根目录
+2. XML 解析正确提取 Vehicle/VIN/HCP1/EPS 数据
+3. Slide 1 标题替换为正确的车型名（保持原有字体样式）
+4. Slide 2 表格数据从 XML 正确填充（保持原有字体样式）
+5. 模板分析正确（18 页，15 页含 Driver Activity 标识）
+6. Slide → 数据映射正确（类型 A/B/C）
+7. TS_FCT_USS_18 列模式：Example 保留、Test→JPG、Test Result→PNG
+8. 图片分配顺序正确（Type C Slide 14 在 Type B Slide 15-16 前消耗）
+9. 生成文件约 60MB（接近模板 50MB，优化 MPO→JPEG + 1920px 限制）
+10. 报告正确输出到 workspace 目录

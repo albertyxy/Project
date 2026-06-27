@@ -16,6 +16,7 @@ import os
 import re
 import shutil
 import tempfile
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -23,6 +24,7 @@ from PIL import Image
 from pptx import Presentation
 from pptx.util import Emu
 
+from app.config import PROJECT_ROOT, WORKSPACE_ROOT
 from app.tool.base import BaseTool
 from app.utils.logger import logger
 
@@ -144,8 +146,14 @@ class PPTReportTool(BaseTool):
         "required": ["action"],
     }
 
-    USS_DATA_ROOT: str = "USS Data"
-    USSD_TEMPLATE: str = "USS Data/USSDB Test Report Template.pptx"
+    # 路径均相对于项目根目录，不依赖 cwd
+    @property
+    def uss_data_root(self) -> Path:
+        return PROJECT_ROOT / "USS Data"
+
+    @property
+    def uss_template_path(self) -> Path:
+        return PROJECT_ROOT / "USS Data/USSDB Test Report Template.pptx"
 
     DRIVER_ACTIVITY_RE: str = (
         r"Driver Activity:\s*TS_FCT_USS_\d+(?:\s*[-&]?\s*Action\s*-?\d+)*"
@@ -181,9 +189,9 @@ class PPTReportTool(BaseTool):
     # ==================================================================
 
     def _find_project(self, project_name: str) -> dict:
-        uss_data_path = Path(self.USS_DATA_ROOT)
+        uss_data_path = self.uss_data_root
         if not uss_data_path.exists():
-            return {"found": False, "error": f"USS Data 目录不存在: {self.USS_DATA_ROOT}"}
+            return {"found": False, "error": f"USS Data 目录不存在: {uss_data_path}"}
 
         subdirs = [d for d in uss_data_path.iterdir() if d.is_dir()]
         subdir_names = [d.name for d in subdirs]
@@ -204,8 +212,8 @@ class PPTReportTool(BaseTool):
 
         project_dir = matches[0]
         data_folders = sorted([d.name for d in project_dir.iterdir() if d.is_dir()])
-        template_path = self.USSD_TEMPLATE
-        if not Path(template_path).exists():
+        template_path = str(self.uss_template_path)
+        if not self.uss_template_path.exists():
             return {"found": False, "error": f"模板文件不存在: {template_path}"}
 
         return {
@@ -405,14 +413,17 @@ class PPTReportTool(BaseTool):
         # 确定输出路径
         if not output_path:
             project_name = Path(data_dir).name
-            workspace = Path("workspace")
-            workspace.mkdir(parents=True, exist_ok=True)
-            output_path = str(workspace / f"{project_name}_Report.pptx")
+            WORKSPACE_ROOT.mkdir(parents=True, exist_ok=True)
+            output_path = str(WORKSPACE_ROOT / f"{project_name}_Report.pptx")
 
         shutil.copy2(template_path, output_path)
         prs = Presentation(output_path)
 
+        # Step 0: 自动解析 XML 并填充 Slide 1/2 元数据
+        metadata_result = self._populate_metadata(prs, data_dir)
+
         stats = {
+            "metadata": metadata_result,
             "simple_replaced": 0,
             "column_replaced": 0,
             "column_test_replaced": 0,
@@ -472,6 +483,197 @@ class PPTReportTool(BaseTool):
                 si["text"] = shape.text_frame.text.strip()
             info["shapes"].append(si)
         return info
+
+    # ==================================================================
+    # XML 元数据解析与填充（Slide 1 标题 + Slide 2 表格）
+    # ==================================================================
+
+    def _find_xml_file(self, data_dir: str) -> Optional[str]:
+        """在项目数据目录下搜索 .xml 文件。"""
+        data_path = Path(data_dir)
+        if not data_path.exists():
+            return None
+        xml_files = list(data_path.glob("*.xml")) + list(data_path.glob("*.XML"))
+        return str(xml_files[0]) if xml_files else None
+
+    def _parse_xml_metadata(self, xml_path: str) -> dict:
+        """解析 iDEX XML 文件，提取 Vehicle/VIN/HCP1/EPS 元数据。"""
+        result = {
+            "vehicle_model": "",
+            "vin": "",
+            "hcp1": {},
+            "eps": {},
+            "xml_file": os.path.basename(xml_path),
+        }
+
+        try:
+            tree = ET.parse(xml_path)
+            root = tree.getroot()
+
+            # 顶层字段
+            user_projekt = self._xml_text(root, "UserProjekt")
+            result["vehicle_model"] = self._extract_vehicle_model(user_projekt)
+            result["vin"] = self._xml_text(root, "Fahrgestellnummer")
+
+            # 遍历 Diagnoseblock 查找 HCP1 和 EPS
+            for db in root.iter("Diagnoseblock"):
+                sys_name = self._xml_text(db, "Systembezeichnung")
+                if not sys_name:
+                    continue
+
+                if "HCP1" in sys_name.upper():
+                    result["hcp1"] = self._extract_ecu_data(db)
+                elif "EPS" in sys_name.upper() and "EPS_" in sys_name:
+                    result["eps"] = self._extract_ecu_data(db)
+
+        except Exception as e:
+            logger.warning(f"XML 解析失败: {e}")
+            result["error"] = str(e)
+
+        return result
+
+    def _populate_metadata(self, prs, data_dir: str) -> dict:
+        """解析 XML 并将元数据填入 PPT 的 Slide 1 和 Slide 2。
+
+        Returns:
+            {"xml_found": bool, "title_updated": bool, "table_updated": bool}
+        """
+        result = {"xml_found": False, "title_updated": False, "table_updated": False}
+
+        xml_path = self._find_xml_file(data_dir)
+        if not xml_path:
+            return result
+
+        result["xml_found"] = True
+        meta = self._parse_xml_metadata(xml_path)
+        if meta.get("error"):
+            result["error"] = meta["error"]
+            return result
+
+        # -- Slide 1: 替换标题 --
+        slide1 = prs.slides[0]
+        model = meta.get("vehicle_model", "")
+        if model:
+            for shape in slide1.shapes:
+                if shape.has_text_frame:
+                    full_text = shape.text_frame.text
+                    if "USSDB" in full_text and "Test Report" in full_text:
+                        # 模板标题格式: "{车型名} USSDB R4.1\nTest Report"
+                        # Run 结构: ["Q6 ", "etron", " USSDB R4.1 ", "Test Report"]
+                        # 将 "USSDB" 前面的所有 run 清空，第一个 run 替换为车型名
+                        para = shape.text_frame.paragraphs[0]
+                        ussdb_run_idx = None
+                        for ri, run in enumerate(para.runs):
+                            if "USSDB" in run.text:
+                                ussdb_run_idx = ri
+                                break
+
+                        if ussdb_run_idx is not None and ussdb_run_idx > 0:
+                            # 将 USSDB 之前的所有 runs 合并到第一个 run，其余清空
+                            # 保持各 run 原有的字体样式
+                            para.runs[0].text = f"{model} "
+                            for ri in range(1, ussdb_run_idx):
+                                para.runs[ri].text = ""
+                            result["title_updated"] = True
+                        break  # 只处理第一个匹配的 shape
+
+        # -- Slide 2: 替换表格数据 --
+        slide2 = prs.slides[1]
+        for shape in slide2.shapes:
+            if not shape.has_table:
+                continue
+
+            table = shape.table
+
+            # Row 1: Vehicle + VIN（保持原 cell 字体样式，清除多余 runs）
+            if len(table.rows) > 1:
+                cell = table.cell(1, 0)
+                model = meta.get("vehicle_model", "")
+                vin = meta.get("vin", "")
+                if model and vin:
+                    tf = cell.text_frame
+                    if tf.paragraphs and tf.paragraphs[0].runs:
+                        tf.paragraphs[0].runs[0].text = f"Vehicle: {model},  VIN: {vin}"
+                        # 清除后续 runs（原模板可能将 Vehicle/VIN 拆成了多个 run）
+                        for run in tf.paragraphs[0].runs[1:]:
+                            run.text = ""
+                    else:
+                        cell.text = f"Vehicle: {model},  VIN: {vin}"
+                    result["table_updated"] = True
+
+            # Row 3: HCP1
+            hcp1 = meta.get("hcp1", {})
+            if hcp1 and len(table.rows) > 3:
+                self._fill_ecu_row(table, 3, hcp1)
+
+            # Row 4: EPS
+            eps = meta.get("eps", {})
+            if eps and len(table.rows) > 4:
+                self._fill_ecu_row(table, 4, eps)
+
+        return result
+
+    def _fill_ecu_row(self, table, row_idx: int, ecu_data: dict):
+        """将 ECU 数据填入表格的指定行，保持原 cell 的字体样式。"""
+        if row_idx >= len(table.rows):
+            return
+        cols = len(table.columns)
+
+        mappings = {
+            1: self._strip(ecu_data.get("SWTeilenummer", "")),
+            2: self._strip(ecu_data.get("SWVersion", "")),
+            3: f"{self._strip(ecu_data.get('ZdcName', ''))} [{self._strip(ecu_data.get('ZdcVersion', ''))}]",
+            4: self._strip(ecu_data.get("HWTeilenummer", "")),
+            5: self._strip(ecu_data.get("HWVersion", "")),
+        }
+
+        for ci, val in mappings.items():
+            if ci < cols:
+                cell = table.cell(row_idx, ci)
+                tf = cell.text_frame
+                if tf.paragraphs and tf.paragraphs[0].runs:
+                    tf.paragraphs[0].runs[0].text = val
+                    # 清除后续 runs
+                    for run in tf.paragraphs[0].runs[1:]:
+                        run.text = ""
+                else:
+                    cell.text = val
+
+    def _extract_ecu_data(self, db) -> dict:
+        """从 Diagnoseblock XML 元素中提取 ECU 数据。"""
+        return {
+            "Systembezeichnung": self._xml_text(db, "Systembezeichnung"),
+            "SWTeilenummer": self._xml_text(db, "SWTeilenummer"),
+            "SWVersion": self._xml_text(db, "SWVersion"),
+            "HWTeilenummer": self._xml_text(db, "HWTeilenummer"),
+            "HWVersion": self._xml_text(db, "HWVersion"),
+            "ZdcName": self._xml_text(db, "ZdcName"),
+            "ZdcVersion": self._xml_text(db, "ZdcVersion"),
+        }
+
+    def _xml_text(self, parent, tag: str) -> str:
+        """安全获取 XML 子元素文本。"""
+        child = parent.find(tag)
+        return (child.text or "").strip() if child is not None and child.text else ""
+
+    def _strip(self, val: str) -> str:
+        """去除字符串首尾空白。"""
+        return val.strip() if val else ""
+
+    def _extract_vehicle_model(self, user_projekt: str) -> str:
+        """从 UserProjekt 字段提取车型名。
+
+        "AU511/x E6 Limo China" → "E6L"
+        """
+        if not user_projekt:
+            return ""
+        # 匹配 "E" 开头后跟数字的车型代号（如 E6）
+        m = re.search(r"\b(E\d+)\s*(L)?", user_projekt, re.IGNORECASE)
+        if m:
+            base = m.group(1)
+            suffix = m.group(2) or ""
+            return f"{base}{suffix}"
+        return user_projekt
 
     # ==================================================================
     # 简单模式替换（非 TS_FCT_USS_18）：逐个替换全部图片
@@ -794,7 +996,11 @@ class PPTReportTool(BaseTool):
                 return c
         return None
 
+    # 图片最大尺寸（超出则等比缩放），PPT 不需要 4K 分辨率
+    MAX_IMAGE_DIM: int = 1920
+
     def _convert_image_if_needed(self, img_path: str) -> str:
+        """MPO 等非标准格式转为 JPEG，限制分辨率以控制文件大小。"""
         pptx_supported_formats = {"BMP", "GIF", "JPEG", "PNG", "TIFF", "WMF"}
         try:
             img = Image.open(img_path)
@@ -802,13 +1008,15 @@ class PPTReportTool(BaseTool):
             if fmt and fmt.upper() in pptx_supported_formats:
                 img.close()
                 return img_path
-            converted = self._pil_to_png(img)
+            # MPO 等非标准格式 → JPEG
+            converted = self._pil_to_jpeg(img)
             img.close()
             return converted
         except Exception:
             return img_path
 
-    def _pil_to_png(self, img: Image.Image) -> str:
+    def _pil_to_jpeg(self, img: Image.Image) -> str:
+        """PIL Image → 临时 JPEG，转换 RGBA/P 模式并限制分辨率。"""
         if img.mode in ("RGBA", "LA"):
             bg = Image.new("RGB", img.size, (255, 255, 255))
             bg.paste(img, mask=img.split()[-1])
@@ -820,7 +1028,12 @@ class PPTReportTool(BaseTool):
             img = bg
         elif img.mode != "RGB":
             img = img.convert("RGB")
-        tmp = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
-        img.save(tmp.name, "PNG")
+        # 限制最大尺寸
+        w, h = img.size
+        ratio = min(self.MAX_IMAGE_DIM / w, self.MAX_IMAGE_DIM / h, 1.0)
+        if ratio < 1:
+            img = img.resize((int(w * ratio), int(h * ratio)), Image.LANCZOS)
+        tmp = tempfile.NamedTemporaryFile(suffix=".jpg", delete=False)
+        img.save(tmp.name, "JPEG", quality=85)
         tmp.close()
         return tmp.name

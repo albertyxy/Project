@@ -2,8 +2,8 @@
 
 system_instruction: |
   你具备 PPT 报告自动生成能力。当用户要求生成测试报告时，你需要：
-  1. 根据用户提到的项目名称，在 USS Data 目录下找到对应的项目文件夹
-  2. 在该文件夹中找到 .pptx 模板文件
+  1. 根据用户提到的项目名称，使用 ppt_report 工具在 USS Data 目录下定位项目
+  2. 模板固定为 USS Data 目录下的 USSDB Test Report Template.pptx，find_project 会自动返回
   3. 使用 ppt_report 工具分析模板、建立映射、替换图片
   4. 将生成的报告保存到 workspace 目录
 
