@@ -12,6 +12,7 @@ PPT 测试报告生成工具
 """
 
 import io
+import json
 import os
 import re
 import shutil
@@ -27,10 +28,6 @@ from pptx.util import Emu
 from app.config import PROJECT_ROOT, WORKSPACE_ROOT
 from app.tool.base import BaseTool
 from app.utils.logger import logger
-
-# 列聚类的容差（EMU），约 0.16 inch
-# 同一列内的 left 坐标可能有微小差异（图片宽度不同导致的对齐偏差）
-COLUMN_TOLERANCE_EMU = 150000
 
 
 class FolderImageCursor:
@@ -130,6 +127,10 @@ class PPTReportTool(BaseTool):
                 "type": "string",
                 "description": "项目名称（用于 find_project 操作）",
             },
+            "data_root": {
+                "type": "string",
+                "description": "数据根目录（可选，默认 USS Data；用于 find_project 指定其他模板目录）",
+            },
             "template_path": {
                 "type": "string",
                 "description": "模板PPT文件路径",
@@ -151,19 +152,70 @@ class PPTReportTool(BaseTool):
     def uss_data_root(self) -> Path:
         return PROJECT_ROOT / "USS Data"
 
+    def _resolve_data_root(self, data_root: Optional[str] = None) -> Path:
+        """解析数据根目录。传入路径则相对于 PROJECT_ROOT，默认 USS Data。"""
+        if data_root:
+            p = Path(data_root)
+            return p if p.is_absolute() else PROJECT_ROOT / p
+        return self.uss_data_root
+
     @property
     def uss_template_path(self) -> Path:
-        return PROJECT_ROOT / "USS Data/USSDB Test Report Template.pptx"
+        """默认模板路径（USS 报告），新模板在 find_project 中按 data_root 返回。"""
+        data_root = self._resolve_data_root()
+        cfg = self._load_template_config(data_root)
+        tpl = cfg.get("template_file", "USSDB Test Report Template.pptx")
+        return data_root / tpl
 
-    DRIVER_ACTIVITY_RE: str = (
-        r"Driver Activity:\s*TS_FCT_USS_\d+(?:\s*[-&]?\s*Action\s*-?\d+)*"
-        r"(?:\s*&\s*TS_FCT_USS_\d+(?:\s*[-&]?\s*Action\s*-?\d+)*)*"
-    )
+    # ---- 模板配置 ----
+    _template_config: Optional[dict] = None
+    _template_config_root: Optional[Path] = None
+
+    def _load_template_config(self, data_root: Optional[Path] = None) -> dict:
+        """加载 {data_root}/template_config.json，按 data_root 缓存。"""
+        if data_root is None:
+            data_root = self._resolve_data_root()
+        if self._template_config is not None and self._template_config_root == data_root:
+            return self._template_config
+        cfg_path = data_root / "template_config.json"
+        try:
+            if cfg_path.exists():
+                with open(cfg_path, "r", encoding="utf-8") as f:
+                    self._template_config = json.load(f)
+                self._template_config_root = data_root
+                logger.info(f"已加载模板配置: {cfg_path}")
+            else:
+                self._template_config = {}
+                self._template_config_root = data_root
+        except Exception as e:
+            logger.warning(f"模板配置加载失败: {e}")
+            self._template_config = {}
+            self._template_config_root = data_root
+        return self._template_config
+
+    def _cfg(self, *keys, default=None):
+        """安全读取嵌套配置。_cfg('slide_layouts', 'default', 'strategy')"""
+        cfg = self._load_template_config()
+        for k in keys:
+            if isinstance(cfg, dict):
+                cfg = cfg.get(k)
+            else:
+                return default
+        return cfg if cfg is not None else default
+
+    @property
+    def driver_activity_re(self) -> str:
+        """Driver Activity 正则：优先从 config 读取，降级使用默认值。"""
+        return self._cfg("driver_activity", "regex",
+                         default=r"Driver Activity:\s*TS_FCT_USS_\d+(?:\s*[-&]?\s*Action\s*-?\d+)*(?:\s*&\s*TS_FCT_USS_\d+(?:\s*[-&]?\s*Action\s*-?\d+)*)*")
 
     async def execute(self, **kwargs) -> Any:
         action = kwargs.get("action", "")
         if action == "find_project":
-            result = self._find_project(kwargs.get("project_name", ""))
+            result = self._find_project(
+                kwargs.get("project_name", ""),
+                kwargs.get("data_root"),
+            )
         elif action == "analyze_template":
             result = self._analyze_template(kwargs.get("template_path", ""))
         elif action == "build_mapping":
@@ -188,12 +240,13 @@ class PPTReportTool(BaseTool):
     # 核心方法
     # ==================================================================
 
-    def _find_project(self, project_name: str) -> dict:
-        uss_data_path = self.uss_data_root
-        if not uss_data_path.exists():
-            return {"found": False, "error": f"USS Data 目录不存在: {uss_data_path}"}
+    def _find_project(self, project_name: str, data_root: Optional[str] = None) -> dict:
+        """在 data_root 下搜索项目文件夹。默认 USS Data，可通过参数指定其他根目录。"""
+        root = self._resolve_data_root(data_root)
+        if not root.exists():
+            return {"found": False, "error": f"数据根目录不存在: {root}"}
 
-        subdirs = [d for d in uss_data_path.iterdir() if d.is_dir()]
+        subdirs = [d for d in root.iterdir() if d.is_dir()]
         subdir_names = [d.name for d in subdirs]
 
         if not project_name.strip():
@@ -212,15 +265,20 @@ class PPTReportTool(BaseTool):
 
         project_dir = matches[0]
         data_folders = sorted([d.name for d in project_dir.iterdir() if d.is_dir()])
-        template_path = str(self.uss_template_path)
-        if not self.uss_template_path.exists():
-            return {"found": False, "error": f"模板文件不存在: {template_path}"}
+
+        # 模板路径：从 data_root 的 config 读取（不限于 USS Data）
+        cfg = self._load_template_config(root)
+        tpl_name = cfg.get("template_file", "USSDB Test Report Template.pptx")
+        tpl_path = root / tpl_name
+        if not tpl_path.exists():
+            return {"found": False, "error": f"模板文件不存在: {tpl_path}"}
 
         return {
             "found": True,
             "project_name": project_dir.name,
             "project_dir": str(project_dir),
-            "template_path": template_path,
+            "template_path": str(tpl_path),
+            "data_root": str(root),
             "data_folders": data_folders,
         }
 
@@ -258,7 +316,7 @@ class PPTReportTool(BaseTool):
 
             driver_activities = []
             for text in texts:
-                da_match = re.search(self.DRIVER_ACTIVITY_RE, text, re.IGNORECASE)
+                da_match = re.search(self.driver_activity_re, text, re.IGNORECASE)
                 if da_match:
                     for act in self._parse_driver_activity_line(da_match.group(0)):
                         if act not in driver_activities:
@@ -489,20 +547,22 @@ class PPTReportTool(BaseTool):
     # ==================================================================
 
     def _find_xml_file(self, data_dir: str) -> Optional[str]:
-        """在项目数据目录下搜索 .xml 文件。"""
+        """在项目数据目录下搜索 XML 文件（支持配置指定 pattern）。"""
         data_path = Path(data_dir)
         if not data_path.exists():
             return None
-        xml_files = list(data_path.glob("*.xml")) + list(data_path.glob("*.XML"))
+        pattern = self._cfg("data_sources", "xml", "file_pattern", default="*.xml")
+        xml_files = list(data_path.glob(pattern))
+        if not xml_files:
+            xml_files = list(data_path.glob("*.xml")) + list(data_path.glob("*.XML"))
         return str(xml_files[0]) if xml_files else None
 
     def _parse_xml_metadata(self, xml_path: str) -> dict:
-        """解析 iDEX XML 文件，提取 Vehicle/VIN/HCP1/EPS 元数据。"""
+        """解析 iDEX XML 文件，按配置提取 ECU 元数据。"""
         result = {
             "vehicle_model": "",
             "vin": "",
-            "hcp1": {},
-            "eps": {},
+            "ecus": {},      # {key: {ecu_data}} 如 {"hcp1": {...}, "eps": {...}}
             "xml_file": os.path.basename(xml_path),
         }
 
@@ -510,21 +570,29 @@ class PPTReportTool(BaseTool):
             tree = ET.parse(xml_path)
             root = tree.getroot()
 
-            # 顶层字段
             user_projekt = self._xml_text(root, "UserProjekt")
             result["vehicle_model"] = self._extract_vehicle_model(user_projekt)
             result["vin"] = self._xml_text(root, "Fahrgestellnummer")
 
-            # 遍历 Diagnoseblock 查找 HCP1 和 EPS
+            # 从 config 读取 ECU 匹配规则
+            ecu_rules = {}
+            config_rows = self._cfg("config_slide", "rows", default={})
+            for key, row_cfg in config_rows.items():
+                match = row_cfg.get("ecu_match")
+                if match:
+                    ecu_rules[key] = match
+
+            # 遍历 Diagnoseblock 按规则匹配
             for db in root.iter("Diagnoseblock"):
                 sys_name = self._xml_text(db, "Systembezeichnung")
                 if not sys_name:
                     continue
-
-                if "HCP1" in sys_name.upper():
-                    result["hcp1"] = self._extract_ecu_data(db)
-                elif "EPS" in sys_name.upper() and "EPS_" in sys_name:
-                    result["eps"] = self._extract_ecu_data(db)
+                for ecu_key, rule in ecu_rules.items():
+                    field = rule.get("field", "Systembezeichnung")
+                    pattern = rule.get("pattern", "")
+                    val = self._xml_text(db, field) if field == "Systembezeichnung" else self._xml_text(db, field)
+                    if pattern and pattern.upper() in val.upper():
+                        result["ecus"][ecu_key] = self._extract_ecu_data(db)
 
         except Exception as e:
             logger.warning(f"XML 解析失败: {e}")
@@ -533,11 +601,7 @@ class PPTReportTool(BaseTool):
         return result
 
     def _populate_metadata(self, prs, data_dir: str) -> dict:
-        """解析 XML 并将元数据填入 PPT 的 Slide 1 和 Slide 2。
-
-        Returns:
-            {"xml_found": bool, "title_updated": bool, "table_updated": bool}
-        """
+        """按 template_config.json 配置填充 Slide 1/2 元数据。"""
         result = {"xml_found": False, "title_updated": False, "table_updated": False}
 
         xml_path = self._find_xml_file(data_dir)
@@ -550,68 +614,96 @@ class PPTReportTool(BaseTool):
             result["error"] = meta["error"]
             return result
 
-        # -- Slide 1: 替换标题 --
-        slide1 = prs.slides[0]
-        model = meta.get("vehicle_model", "")
-        if model:
-            for shape in slide1.shapes:
-                if shape.has_text_frame:
-                    full_text = shape.text_frame.text
-                    if "USSDB" in full_text and "Test Report" in full_text:
-                        # 模板标题格式: "{车型名} USSDB R4.1\nTest Report"
-                        # Run 结构: ["Q6 ", "etron", " USSDB R4.1 ", "Test Report"]
-                        # 将 "USSDB" 前面的所有 run 清空，第一个 run 替换为车型名
-                        para = shape.text_frame.paragraphs[0]
-                        ussdb_run_idx = None
-                        for ri, run in enumerate(para.runs):
-                            if "USSDB" in run.text:
-                                ussdb_run_idx = ri
-                                break
+        # -- Slide 1: 替换标题（配置驱动） --
+        title_cfg = self._cfg("title_slide", default={})
+        title_slide_idx = title_cfg.get("slide_index", 1) - 1
+        if title_slide_idx < len(prs.slides):
+            slide1 = prs.slides[title_slide_idx]
+            model = meta.get("vehicle_model", "")
+            if model:
+                for shape in slide1.shapes:
+                    if shape.has_text_frame:
+                        full_text = shape.text_frame.text
+                        if "USSDB" in full_text and "Test Report" in full_text:
+                            para = shape.text_frame.paragraphs[0]
+                            ussdb_run_idx = None
+                            for ri, run in enumerate(para.runs):
+                                if "USSDB" in run.text:
+                                    ussdb_run_idx = ri
+                                    break
+                            if ussdb_run_idx is not None and ussdb_run_idx > 0:
+                                para.runs[0].text = f"{model} "
+                                for ri in range(1, ussdb_run_idx):
+                                    para.runs[ri].text = ""
+                                result["title_updated"] = True
+                            break
 
-                        if ussdb_run_idx is not None and ussdb_run_idx > 0:
-                            # 将 USSDB 之前的所有 runs 合并到第一个 run，其余清空
-                            # 保持各 run 原有的字体样式
-                            para.runs[0].text = f"{model} "
-                            for ri in range(1, ussdb_run_idx):
-                                para.runs[ri].text = ""
-                            result["title_updated"] = True
-                        break  # 只处理第一个匹配的 shape
+        # -- Slide 2: 替换表格数据（配置驱动） --
+        config_cfg = self._cfg("config_slide", default={})
+        config_slide_idx = config_cfg.get("slide_index", 2) - 1
+        if config_slide_idx < len(prs.slides):
+            slide2 = prs.slides[config_slide_idx]
+            for shape in slide2.shapes:
+                if not shape.has_table:
+                    continue
+                table = shape.table
 
-        # -- Slide 2: 替换表格数据 --
-        slide2 = prs.slides[1]
-        for shape in slide2.shapes:
-            if not shape.has_table:
-                continue
+                config_rows = config_cfg.get("rows", {})
+                for key, row_cfg in config_rows.items():
+                    ri = row_cfg.get("row_index", -1)
+                    if ri < 0 or ri >= len(table.rows):
+                        continue
 
-            table = shape.table
+                    if "template" in row_cfg:
+                        # 模板字符串行（如 Vehicle + VIN）
+                        tmpl = row_cfg["template"]
+                        ci = row_cfg.get("col_index", 0)
+                        cell = table.cell(ri, ci)
+                        text = tmpl.format(
+                            vehicle_model=meta.get("vehicle_model", ""),
+                            vin=meta.get("vin", ""),
+                        )
+                        tf = cell.text_frame
+                        if tf.paragraphs and tf.paragraphs[0].runs:
+                            tf.paragraphs[0].runs[0].text = text
+                            for run in tf.paragraphs[0].runs[1:]:
+                                run.text = ""
+                        else:
+                            cell.text = text
+                        result["table_updated"] = True
 
-            # Row 1: Vehicle + VIN（保持原 cell 字体样式，清除多余 runs）
-            if len(table.rows) > 1:
-                cell = table.cell(1, 0)
-                model = meta.get("vehicle_model", "")
-                vin = meta.get("vin", "")
-                if model and vin:
-                    tf = cell.text_frame
-                    if tf.paragraphs and tf.paragraphs[0].runs:
-                        tf.paragraphs[0].runs[0].text = f"Vehicle: {model},  VIN: {vin}"
-                        # 清除后续 runs（原模板可能将 Vehicle/VIN 拆成了多个 run）
-                        for run in tf.paragraphs[0].runs[1:]:
-                            run.text = ""
-                    else:
-                        cell.text = f"Vehicle: {model},  VIN: {vin}"
-                    result["table_updated"] = True
-
-            # Row 3: HCP1
-            hcp1 = meta.get("hcp1", {})
-            if hcp1 and len(table.rows) > 3:
-                self._fill_ecu_row(table, 3, hcp1)
-
-            # Row 4: EPS
-            eps = meta.get("eps", {})
-            if eps and len(table.rows) > 4:
-                self._fill_ecu_row(table, 4, eps)
+                    elif "ecu_match" in row_cfg:
+                        # ECU 数据行
+                        ecu_data = meta.get("ecus", {}).get(key, {})
+                        if ecu_data:
+                            col_map = {}
+                            for ci_str, col_cfg in row_cfg.get("columns", {}).items():
+                                fmt = col_cfg.get("format", "{value}")
+                                val = self._strip(ecu_data.get(col_cfg.get("xml_field", ""), ""))
+                                suffix = ""
+                                if "suffix_field" in col_cfg:
+                                    suffix = self._strip(ecu_data.get(col_cfg["suffix_field"], ""))
+                                col_map[int(ci_str)] = fmt.format(value=val, suffix=suffix)
+                            self._fill_ecu_row_from_map(table, ri, col_map)
+                            result["table_updated"] = True
 
         return result
+
+    def _fill_ecu_row_from_map(self, table, row_idx: int, col_map: Dict[int, str]):
+        """按 {col_index: value} 填入表格行，保持字体样式。"""
+        if row_idx >= len(table.rows):
+            return
+        cols = len(table.columns)
+        for ci, val in col_map.items():
+            if ci < cols:
+                cell = table.cell(row_idx, ci)
+                tf = cell.text_frame
+                if tf.paragraphs and tf.paragraphs[0].runs:
+                    tf.paragraphs[0].runs[0].text = val
+                    for run in tf.paragraphs[0].runs[1:]:
+                        run.text = ""
+                else:
+                    cell.text = val
 
     def _fill_ecu_row(self, table, row_idx: int, ecu_data: dict):
         """将 ECU 数据填入表格的指定行，保持原 cell 的字体样式。"""
@@ -661,14 +753,12 @@ class PPTReportTool(BaseTool):
         return val.strip() if val else ""
 
     def _extract_vehicle_model(self, user_projekt: str) -> str:
-        """从 UserProjekt 字段提取车型名。
-
-        "AU511/x E6 Limo China" → "E6L"
-        """
+        """从 UserProjekt 提取车型名，优先使用 config 中的正则规则。"""
         if not user_projekt:
             return ""
-        # 匹配 "E" 开头后跟数字的车型代号（如 E6）
-        m = re.search(r"\b(E\d+)\s*(L)?", user_projekt, re.IGNORECASE)
+        rule = self._cfg("title_slide", "fields", "vehicle_model", "transform_rule",
+                         default=r"\b(E\d+)\s*(L)?")
+        m = re.search(rule, user_projekt, re.IGNORECASE)
         if m:
             base = m.group(1)
             suffix = m.group(2) or ""
@@ -749,7 +839,8 @@ class PPTReportTool(BaseTool):
         clusters = []
         current_cluster = [0]
         for i in range(1, len(sorted_lefts)):
-            if sorted_lefts[i] - sorted_lefts[i - 1] <= COLUMN_TOLERANCE_EMU:
+            tolerance = self._cfg("slide_layouts", "ts_fct_uss_18", "column_clustering", "tolerance_emu", default=150000)
+            if sorted_lefts[i] - sorted_lefts[i - 1] <= tolerance:
                 current_cluster.append(i)
             else:
                 clusters.append(current_cluster)
@@ -997,7 +1088,9 @@ class PPTReportTool(BaseTool):
         return None
 
     # 图片最大尺寸（超出则等比缩放），PPT 不需要 4K 分辨率
-    MAX_IMAGE_DIM: int = 1920
+    @property
+    def max_image_dim(self) -> int:
+        return self._cfg("image_processing", "max_dimension", default=1920)
 
     def _convert_image_if_needed(self, img_path: str) -> str:
         """MPO 等非标准格式转为 JPEG，限制分辨率以控制文件大小。"""
@@ -1030,7 +1123,7 @@ class PPTReportTool(BaseTool):
             img = img.convert("RGB")
         # 限制最大尺寸
         w, h = img.size
-        ratio = min(self.MAX_IMAGE_DIM / w, self.MAX_IMAGE_DIM / h, 1.0)
+        ratio = min(self.max_image_dim / w, self.max_image_dim / h, 1.0)
         if ratio < 1:
             img = img.resize((int(w * ratio), int(h * ratio)), Image.LANCZOS)
         tmp = tempfile.NamedTemporaryFile(suffix=".jpg", delete=False)

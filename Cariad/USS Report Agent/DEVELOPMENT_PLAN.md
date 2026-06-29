@@ -104,12 +104,15 @@ USS Report Agent/
 │   ├── agent/
 │   │   └── manus.py              ← [修改] 添加 PPTReportTool 到工具集
 │   ├── tool/
-│   │   └── ppt_report_tool.py    ← [新建] PPT 报告工具
+│   │   └── ppt_report_tool.py    ← [新建] PPT 报告工具（通用，配置驱动）
 │   ├── prompt/
 │   │   └── report.yaml           ← [新建] Report 相关 prompt (YAML格式)
 │   └── config.py                 ← [修改] 添加 USS Data 路径配置
 ├── config/
 │   └── config.toml               ← [修改] 添加 report 配置段
+├── USS Data/
+│   ├── template_config.json      ← [新建] 模板配置文件（换模板只改此文件）
+│   └── USSDB Test Report Template.pptx
 └── DEVELOPMENT_PLAN.md            ← [本文件]
 ```
 
@@ -118,7 +121,8 @@ USS Report Agent/
 - **不新建独立 Agent**：复用 Manus Agent，将 PPTReportTool 加入其工具集即可
 - **不新建入口脚本**：用户统一通过 `python main.py` 交互
 - **Prompt 用 YAML**：所有提示词写在 `app/prompt/report.yaml` 中，与其他 prompt 风格统一
-- **自动发现**：Agent 根据用户描述的项目名，自动在 `USS Data/` 下搜索匹配的目录和模板
+- **配置驱动**：模板结构、字段映射、列布局等通过 `template_config.json` 描述，换模板不改代码
+- **自动发现**：Agent 根据用户描述的项目名，自动在 `USS Data/` 下搜索匹配的目录
 
 ### 3.3 依赖新增
 
@@ -594,7 +598,8 @@ TS_FCT_USS_18 系列 Slide 需要通过 left 坐标聚类来识别三列：
 | 文件 | 操作 | 说明 |
 |------|------|------|
 | `app/prompt/report.yaml` | **新建** | Report 相关 prompt (YAML格式) |
-| `app/tool/ppt_report_tool.py` | **新建** | PPT 操作工具 |
+| `app/tool/ppt_report_tool.py` | **新建** | PPT 操作工具（通用逻辑，配置驱动） |
+| `USS Data/template_config.json` | **新建** | 模板配置文件（换模板只改此文件） |
 | `app/prompt/manus.py` | **修改** | 从 report.yaml 加载报告相关 prompt |
 | `app/agent/manus.py` | **修改** | 添加 PPTReportTool 到工具集 |
 | `app/tool/__init__.py` | **修改** | 导出 PPTReportTool |

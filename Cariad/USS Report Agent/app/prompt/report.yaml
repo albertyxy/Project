@@ -14,7 +14,8 @@ report_workflow: |
 
   ### Step 1: 定位项目
   使用 ppt_report 工具的 `find_project` 操作，传入用户提到的项目名称。
-  工具会自动在 USS Data 目录下搜索匹配的文件夹，返回模板路径和数据路径。
+  工具默认在 USS Data 目录下搜索，如需指定其他数据根目录可传入 `data_root` 参数。
+  **直接使用返回的 template_path 和 project_dir，不要自行验证路径是否存在。**
 
   ### Step 2: 分析模板
   使用 ppt_report 工具的 `analyze_template` 操作，分析模板 PPT 的结构。
