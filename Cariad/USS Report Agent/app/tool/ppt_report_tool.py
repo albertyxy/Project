@@ -150,7 +150,7 @@ class PPTReportTool(BaseTool):
     # 路径均相对于项目根目录，不依赖 cwd
     @property
     def uss_data_root(self) -> Path:
-        return PROJECT_ROOT / "USS Data"
+        return PROJECT_ROOT / "Data/USS Data"
 
     def _resolve_data_root(self, data_root: Optional[str] = None) -> Path:
         """解析数据根目录。传入路径则相对于 PROJECT_ROOT，默认 USS Data。"""
@@ -325,8 +325,17 @@ class PPTReportTool(BaseTool):
             if driver_activities:
                 total_test_slides += 1
 
-            # 检测是否为 TS_FCT_USS_18 系列 Slide（三列布局）
-            is_ts_18 = any("TS_FCT_USS_18" in a for a in driver_activities)
+            # 自动检测列模式：
+            #   规则网格(每列等量≥2) → 列模式，如 TS_FCT_USS_18 (3+3+3), TS_FCT_USS_20 (3+3)
+            #   2列+左列靠左(≤2.0in) → 列模式(Action keep)，如 TS_FCT_USS_21 (2+3, 左1.5in)
+            #   不规则分布 → 简单模式，如 TS_FCT_USS_4 (3+2, 左3.4in)
+            col_count, min_per_col, max_per_col, leftmost_avg = self._analyze_image_columns(slide)
+            if col_count >= 2 and min_per_col >= 2 and min_per_col == max_per_col:
+                column_mode = True  # 规则网格
+            elif col_count == 2 and leftmost_avg > 0 and leftmost_avg <= 1828800:  # ≤2.0in
+                column_mode = True  # 2列 Action 布局
+            else:
+                column_mode = False
 
             slides_info.append({
                 "slide_num": i,
@@ -335,7 +344,9 @@ class PPTReportTool(BaseTool):
                 "texts": texts,
                 "driver_activities": driver_activities,
                 "is_test_slide": len(driver_activities) > 0,
-                "is_ts_18": is_ts_18,
+                "column_mode": column_mode,
+                "column_count": col_count,
+                "min_per_col": min_per_col,
             })
 
         return {
@@ -362,7 +373,7 @@ class PPTReportTool(BaseTool):
 
         for slide_info in template_info["slides"]:
             activities = slide_info["driver_activities"]
-            is_ts_18 = slide_info.get("is_ts_18", False)
+            column_mode = slide_info.get("column_mode", False)
 
             if not activities:
                 non_test_count += 1
@@ -392,7 +403,7 @@ class PPTReportTool(BaseTool):
                         "data_folder": data_folder_name,
                         "data_folder_path": folder_path,
                         "template_image_count": slide_info["image_count"],
-                        "column_mode": is_ts_18,
+                        "column_mode": column_mode,
                     })
                 else:
                     mappings.append({
@@ -400,7 +411,7 @@ class PPTReportTool(BaseTool):
                         "mapping_type": "unmatched",
                         "driver_activities": activities,
                         "data_folder": None,
-                        "column_mode": is_ts_18,
+                        "column_mode": column_mode,
                         "error": f"未找到匹配的数据文件夹: {data_folder_name}",
                     })
             else:
@@ -420,7 +431,7 @@ class PPTReportTool(BaseTool):
                     "data_folders": matched_folders,
                     "data_folder_paths": [data_folders.get(f, "") for f in matched_folders],
                     "template_image_count": slide_info["image_count"],
-                    "column_mode": is_ts_18,
+                    "column_mode": column_mode,
                 })
 
         # 重新分类 A/B
@@ -518,6 +529,10 @@ class PPTReportTool(BaseTool):
                 stats["simple_replaced"] += replaced
                 stats["total_images_replaced"] += replaced
 
+        # Step 6: 删除无数据对应的 Slide（保留 Slide 1/2/末页 + 有映射的页）
+        deleted = self._delete_unmatched_slides(prs, mappings)
+        stats["slides_deleted"] = deleted
+
         prs.save(output_path)
 
         return {
@@ -567,7 +582,13 @@ class PPTReportTool(BaseTool):
         }
 
         try:
-            tree = ET.parse(xml_path)
+            # XML 文件声明 Windows-1252 编码，读取原始字节后解码并清理非法字符
+            with open(xml_path, "rb") as xf:
+                raw = xf.read()
+            text = raw.decode("windows-1252", errors="replace")
+            # 移除 XML 不允许的控制字符（0x00-0x08, 0x0B-0x0C, 0x0E-0x1F）
+            text = re.sub(r"[\x00-\x08\x0B\x0C\x0E-\x1F]", "", text)
+            tree = ET.ElementTree(ET.fromstring(text))
             root = tree.getroot()
 
             user_projekt = self._xml_text(root, "UserProjekt")
@@ -753,9 +774,14 @@ class PPTReportTool(BaseTool):
         return val.strip() if val else ""
 
     def _extract_vehicle_model(self, user_projekt: str) -> str:
-        """从 UserProjekt 提取车型名，优先使用 config 中的正则规则。"""
+        """从 UserProjekt 提取车型名，去除 AU 平台前缀。
+
+        "AU511/x E6 Limo China" → "E6L"
+        "AU40x A4/A5 (B10)"    → "A4/A5 (B10)"
+        """
         if not user_projekt:
             return ""
+        # 先尝试 config 中的正则规则（如 E6L 模式）
         rule = self._cfg("title_slide", "fields", "vehicle_model", "transform_rule",
                          default=r"\b(E\d+)\s*(L)?")
         m = re.search(rule, user_projekt, re.IGNORECASE)
@@ -763,7 +789,9 @@ class PPTReportTool(BaseTool):
             base = m.group(1)
             suffix = m.group(2) or ""
             return f"{base}{suffix}"
-        return user_projekt
+        # 去除 "AUxxx" 或 "AUxxx/x" 平台前缀
+        stripped = re.sub(r"^AU\d+\S*\s+", "", user_projekt)
+        return stripped if stripped else user_projekt
 
     # ==================================================================
     # 简单模式替换（非 TS_FCT_USS_18）：逐个替换全部图片
@@ -811,8 +839,66 @@ class PPTReportTool(BaseTool):
         return {"total": test_replaced + tr_replaced, "test": test_replaced, "test_result": tr_replaced}
 
     # ==================================================================
+    # Slide 过滤：删除无数据对应的 Slide
+    # ==================================================================
+
+    def _delete_unmatched_slides(self, prs, mappings: List[dict]) -> int:
+        """删除模板中无对应数据文件夹的 Slide。
+
+        保留规则:
+          - Slide 1, 2 始终保留（封面 + 车辆配置）
+          - 最后一页始终保留（参数概览）
+          - 有匹配数据的测试页保留（mapping_type 为 A/B/C）
+          - 其余删除（unmatched + 无 Driver Activity 的非固定页）
+        """
+        total_slides = len(prs.slides)
+        last_slide = total_slides
+
+        # 收集需要保留的 slide（原始编号）
+        keep_slides = {1, 2, last_slide}
+        for m in mappings:
+            if m["mapping_type"] in ("A", "B", "C"):
+                keep_slides.add(m["slide_num"])
+
+        # 逆序删除（避免索引偏移），跳过保留的 slide
+        deleted = 0
+        for i in range(total_slides, 0, -1):
+            if i in keep_slides:
+                continue
+            self._remove_slide(prs, i - 1)  # 0-based
+            deleted += 1
+
+        return deleted
+
+    def _remove_slide(self, prs, slide_index: int):
+        """从 Presentation 中删除指定索引的 Slide。"""
+        try:
+            rId = prs.slides._sldIdLst[slide_index].rId
+            prs.part.drop_rel(rId)
+            del prs.slides._sldIdLst[slide_index]
+        except Exception as e:
+            logger.warning(f"删除 Slide {slide_index + 1} 失败: {e}")
+
+    # ==================================================================
     # 列分类：将 slide 中图片按 left 位置分为 Example / Test / Test Result
     # ==================================================================
+
+    def _analyze_image_columns(self, slide) -> tuple:
+        """分析 Slide 图片列数、每列最小/最大图片数、最左列平均 left。
+        返回 (col_count, min_per_col, max_per_col, leftmost_avg)。"""
+        lefts = sorted([s.left for s in slide.shapes if s.shape_type == 13])
+        if len(lefts) <= 1:
+            return (len(lefts), len(lefts), len(lefts), lefts[0] if lefts else 0)
+        tolerance = self._cfg("slide_layouts", "ts_fct_uss_18", "column_clustering", "tolerance_emu", default=150000)
+        clusters = [[lefts[0]]]
+        for v in lefts[1:]:
+            if v - clusters[-1][-1] <= tolerance:
+                clusters[-1].append(v)
+            else:
+                clusters.append([v])
+        counts = [len(c) for c in clusters]
+        leftmost_avg = sum(clusters[0]) / len(clusters[0]) if clusters else 0
+        return (len(clusters), min(counts), max(counts), leftmost_avg)
 
     def _classify_image_columns(self, slide) -> dict:
         """按 left 坐标聚类，返回每张图片的列类型。
@@ -847,10 +933,14 @@ class PPTReportTool(BaseTool):
                 current_cluster = [i]
         clusters.append(current_cluster)
 
+        # 每列内按 top 排序
+        for cl in clusters:
+            cl.sort(key=lambda j: sorted_shapes[j].top)
+
         # 按 left 均值排序 clusters
         cluster_info = []
         for cl in clusters:
-            avg_left = sum(sorted_lefts[j] for j in cl) / len(cl)
+            avg_left = sum(sorted_shapes[j].left for j in cl) / len(cl)
             cluster_info.append({"indices": cl, "avg_left": avg_left})
         cluster_info.sort(key=lambda c: c["avg_left"])
 
@@ -860,20 +950,22 @@ class PPTReportTool(BaseTool):
         if num_clusters == 3:
             col_names = {0: "example", 1: "test", 2: "test_result"}
         elif num_clusters == 2:
-            col_names = {0: "test", 1: "test_result"}
+            col_names = {0: "example", 1: "test_result"}
         else:
             # 全部归类为 test_result
             for ci in range(num_clusters):
                 col_names[ci] = "test_result"
 
-        # 构建结果
-        column_types = [""] * len(pic_shapes)
+        # 按 cluster 顺序重建 shapes 和 column_types（列优先 + 列内上→下）
+        result_shapes = []
+        result_types = []
         for ci, cinfo in enumerate(cluster_info):
             ctype = col_names.get(ci, "test_result")
             for idx in cinfo["indices"]:
-                column_types[idx] = ctype
+                result_shapes.append(sorted_shapes[idx])
+                result_types.append(ctype)
 
-        return {"shapes": pic_shapes, "column_types": column_types}
+        return {"shapes": result_shapes, "column_types": result_types}
 
     def _count_column_images(self, slide) -> dict:
         """统计 Slide 中各列的图片数量。"""
@@ -988,19 +1080,65 @@ class PPTReportTool(BaseTool):
             logger.warning(f"替换图片失败: {e}")
 
     def _replace_images_1to1(self, slide, image_paths: List[str]) -> int:
-        """简单模式：按序一一替换 Slide 中所有图片。"""
+        """简单模式：按视觉位置排序后一一替换。
+
+        用列聚类避免同列 left 微小差异导致的排序错位。
+        """
         pic_shapes = [s for s in slide.shapes if s.shape_type == 13]
         if not pic_shapes or not image_paths:
             return 0
 
+        # 按 left 聚类分组，组内按 top 排序，组间按 left 均值排序
+        sorted_shapes = self._sort_shapes_by_position(pic_shapes)
+
         replaced = 0
-        for i, pic in enumerate(pic_shapes):
+        for i, pic in enumerate(sorted_shapes):
             if i >= len(image_paths):
                 break
             if os.path.exists(image_paths[i]):
                 self._replace_single_image(slide, pic, image_paths[i])
                 replaced += 1
         return replaced
+
+    def _sort_shapes_by_position(self, shapes) -> list:
+        """按视觉位置排序：left 聚类分列 → 行优先展开（逐行从左到右）。
+
+        同一"行"由 top 容差决定（与列容差相同），行内严格按列顺序（左→右）。
+        避免同行的微小 top 差异导致左右顺序错位。
+        """
+        if not shapes:
+            return []
+        tolerance = self._cfg("slide_layouts", "ts_fct_uss_18", "column_clustering", "tolerance_emu", default=150000)
+        sorted_by_left = sorted(shapes, key=lambda s: s.left)
+        clusters = []
+        current = [sorted_by_left[0]]
+        for s in sorted_by_left[1:]:
+            if s.left - current[-1].left <= tolerance:
+                current.append(s)
+            else:
+                clusters.append(current)
+                current = [s]
+        clusters.append(current)
+
+        # 每列内按 top 排序；列间按 left 均值排序
+        for cl in clusters:
+            cl.sort(key=lambda s: s.top)
+        clusters.sort(key=lambda cl: sum(s.left for s in cl) / len(cl))
+
+        # 行优先展开：逐行从左到右，再下一行
+        # 同一"行"由 top 容差决定（与列容差相同），行内严格按列顺序（左→右）
+        result = []
+        while any(clusters):
+            # 找到当前最小的 top 作为本行基准
+            min_top = min(cl[0].top for cl in clusters if cl)
+            # 收集 top 在容差范围内的列（视为同一行），按列索引（左→右）处理
+            row_indices = [
+                i for i, cl in enumerate(clusters)
+                if cl and cl[0].top - min_top <= tolerance
+            ]
+            for ci in row_indices:
+                result.append(clusters[ci].pop(0))
+        return result
 
     # ==================================================================
     # 辅助方法
