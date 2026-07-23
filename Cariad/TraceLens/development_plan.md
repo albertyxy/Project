@@ -72,11 +72,49 @@
 ```
 4行 × 5列:
 r0: Case | Result | Radar Confirm TTC (s) | Confirm as pedestrian TTC (s) | Brake/VW Activated TTC (s)
-r1: Run1 | Pass   | [MF4提取值]            | [MF4提取值]                   | [MF4提取值]
-r2: Run2 | Pass   | [MF4提取值]            | [MF4提取值]                   | [MF4提取值]
-r3: Run3 | Pass   | [MF4提取值]            | [MF4提取值]                   | [MF4提取值]
+r1: Run1 | [Excel] | [MF4提取值]            | [MF4提取值]                   | [MF4提取值]
+r2: Run2 | [Excel] | [MF4提取值]            | [MF4提取值]                   | [MF4提取值]
+r3: Run3 | [Excel] | [MF4提取值]            | [MF4提取值]                   | [MF4提取值]
 ```
 注：Slide 2-3 列4标题为 "Brake Activated TTC"，Slide 4-5 为 "VW Activated TTC"
+
+### 左侧文本框填充
+
+模板原始格式:
+```
+Scenario
+CPLA-25_Night_20kph
+
+
+Trace
+Run1: Gen5_2026-06-30_20-39_Y653_RC1__0067.MF4
+Run2: Gen5_2026-06-30_20-45_Y653_RC1__0068.MF4
+Run3: Gen5_2026-06-30_20-49_Y653_RC1__0069.MF4
+```
+
+需更新为（从 Trace Record.xlsx 读取）:
+```
+Scenario
+CPLA-25_Night_20kph
+
+Result
+Run1: Pass
+Run2: Pass
+Run3: Pass
+
+Trace
+Run1: Gen5_2026-06-30_20-39_Y653_RC1__0067.MF4
+Run2: Gen5_2026-06-30_20-45_Y653_RC1__0068.MF4
+Run3: Gen5_2026-06-30_20-49_Y653_RC1__0069.MF4
+```
+
+**数据来源:**
+| 字段 | 来源 | 说明 |
+|------|------|------|
+| Scenario | 文件夹名 | 如 CPLA-25_Night_20kph |
+| Result | Trace Record.xlsx Pass/No 列 | Pass / Collision / (空→"/") |
+| Trace | Trace Record.xlsx CANape Trace 列 | MF4 文件名 |
+| 表格 Result 列 | 同 Result | 与左侧文本保持一致 |
 
 ## 2. Trace Record 数据结构
 
@@ -130,11 +168,11 @@ r3: Run3 | Pass   | [MF4提取值]            | [MF4提取值]                  
 | `UserProjekt` | Slide 1 车型名 |
 | `WegStrecke` + `EinheitWegStrecke` | Slide 1 里程 |
 
-**ECU 映射（XML Systembezeichnung → PPT 表行）:**
-| PPT 行 | PPT 名称 | XML Systembezeichnung 匹配 |
-|--------|---------|--------------------------|
-| r3 | LRR | "008B - Distance regulation 2" |
-| r4 | MFK | "00A5 - Front sensor for driver assistance systems" |
+**ECU 映射（统一用 XML `Systembezeichnung` 字段匹配）:**
+| PPT 行 | PPT 名称 | XML Systembezeichnung |
+|--------|---------|----------------------|
+| r3 | LRR | "WBA Bosch PPE" |
+| r4 | MFK | "MFK5" |
 | r5 | HCP1 | "HCP1 BOSCH EP" |
 | r6 | NR | "Nanoradar 1" |
 | r7 | ESC | "ABS" |
