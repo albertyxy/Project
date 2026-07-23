@@ -7,7 +7,7 @@
 **核心链路**：`用户选择MF4文件 + 自然语言需求 → Planner(LLM) → Coder(LLM) → Executor(代码执行) → 结束/重试`
 
 **参考**：
-- 工具层使用 `Tool Scripts/` 中的 4 个模块，Agent 层通过 LangGraph 编排调用
+- 工具层使用 `Tool Scripts/` 中的 7 个模块，Agent 层通过 LangGraph 编排调用
 
 ---
 
@@ -19,11 +19,14 @@ MF4 Processor/
 │   ├── measure_USS_04.mf4
 │   └── ...
 │
-├── Tool Scripts/                      # 工具层（已有，不修改）
+├── Tool Scripts/                      # 工具层
 │   ├── list_signals.py                # 列出 MF4 中所有信号名
 │   ├── extract_signal.py              # 提取指定信号数据
 │   ├── extract_around_edges.py        # 边沿检测 + 窗口提取
-│   └── plot_signals.py               # 多信号曲线绘制
+│   ├── find_time_ranges.py            # 按条件查找时间窗口
+│   ├── signal_statistics.py           # 信号统计摘要
+│   ├── plot_signals.py               # 多信号曲线绘制
+│   └── cross_reference.py            # 跨信号关联查询
 │
 ├── agent/                             # Agent 层（新建）
 │   ├── __init__.py
@@ -41,7 +44,7 @@ MF4 Processor/
 │
 ├── output/                            # 生成的图片输出目录（已有）
 ├── .env                               # API Key 配置（OPENAI_API_KEY, OPENAI_API_BASE）
-├── demo.py                            # 手动命令行演示脚本（已有）
+├── requirements.txt                   # Python 依赖
 └── PLAN.md                            # 本文件
 ```
 
@@ -138,7 +141,8 @@ class ProcessorState(TypedDict):
 **LLM**：`qwen3.7-plus`（OpenAI 兼容 API）
 
 **Prompt 核心要点**：
-- 描述可用的操作类型：`list_signals`、`extract_signal`、`extract_around_edges`、`plot_signals`
+- 描述可用的 7 个工具函数：`list_signals`、`extract_signal`、`extract_around_edges`、`find_time_ranges`、`signal_statistics`、`plot_signals`、`cross_reference`
+- 描述 5 种操作类型：`plot`（波形图）、`edges`（边沿检测）、`statistics`（统计摘要）、`find_ranges`（条件查找窗口）、`cross_reference`（跨信号关联查询）
 - 描述 `selected_file` 下的可用信号（调用 `list_signals` 获取）
 - 要求 LLM 输出结构化 JSON，包含：信号筛选、操作类型、参数（文件路径由系统注入，无需 Planner 输出）
 
@@ -174,7 +178,7 @@ class ProcessorState(TypedDict):
 **LLM**：`deepseek-v4-pro`（DeepSeek）
 
 **Prompt 核心要点**：
-- 注入 4 个工具函数的完整签名和 docstring（从 `tools_description.py` 获取）
+- 注入 7 个工具函数的完整签名和 docstring（从 `tools_description.py` 获取）
 - 注入项目路径信息（`data_dir`、`output_dir`、`Tool Scripts` 导入方式）
 - 明确输出要求：仅输出 Python 代码，不要解释文字
 - 代码要求：导入 `Tool Scripts` 模块 → 调用函数 → 保存图片到指定路径 → print 结果
@@ -237,7 +241,7 @@ def after_executor(state) -> str:
 
 ### Step 1：工具描述生成器 (`agent/tools_description.py`)
 
-- 通过 AST 解析 `Tool Scripts/` 下 4 个模块的函数签名、参数类型、docstring（避免 import asammdf 等重依赖）
+- 通过 AST 解析 `Tool Scripts/` 下 7 个模块的函数签名、参数类型、docstring（避免 import asammdf 等重依赖）
 - 格式化为 LLM 可理解的文本描述
 - 暴露 `get_tools_description()` 获取完整工具描述（供 Coder 使用）
 - 暴露 `get_tools_summary()` 获取简要摘要（供 Planner 参考）
@@ -264,12 +268,19 @@ def after_executor(state) -> str:
       你需要输出一个 JSON，包含：
       - signals: 用户提到的信号名称列表（从可用信号列表中模糊匹配）
        - operation: 操作类型，可选值：
-           "plot"     - 绘制信号波形图
-           "edges"    - 检测信号边沿变化
+           "plot"       - 绘制信号波形图
+           "edges"      - 检测信号边沿变化
+           "statistics" - 计算信号统计摘要
+           "find_ranges"- 查找满足条件的时间窗口
+           "cross_reference" - 跨信号关联查询
        - params: 操作参数，根据 operation 不同：
            plot 参数: start_time(可选), end_time(可选), mode("overlay"|"split", 默认"overlay")
            edges 参数: edge_type("rising"|"falling"|"both", 默认"rising"), window_before(默认1.0), 
                       window_after(默认2.0), target_state(可选, 筛选目标状态)
+           statistics 参数: start_time(可选), end_time(可选), percentiles(可选)
+           find_ranges 参数: condition, threshold/lower+upper/value, min_duration(可选), merge_gap(可选)
+           cross_reference 参数: trigger_signal, target_signals, condition, value/threshold(可选),
+                                triggers(多触发模式, 可选), start_time(可选), end_time(可选)
        
        如果用户需求信息不足（无信号名、信号名不匹配、操作意图不清、时间范围模糊），
        不要猜测，输出一个 JSON 包含：
@@ -285,8 +296,9 @@ def after_executor(state) -> str:
       
       你会收到以下信息：
       - 结构化任务 JSON（包含目标信号、操作类型、参数）
-      - 可用工具函数的完整签名和 docstring（共 4 个：list_signals / extract_signal / 
-        extract_around_edges / plot_signals）
+      - 可用工具函数的完整签名和 docstring（共 7 个：list_signals / extract_signal /
+        extract_around_edges / find_time_ranges / signal_statistics / plot_signals /
+        cross_reference）
       - 项目路径（MF4 文件路径、Tool Scripts 路径、输出目录路径）
       
       代码要求：
@@ -357,10 +369,7 @@ def after_executor(state) -> str:
 
 ### Step 9：集成测试
 
-- 用 `demo.py` 中的典型命令作为测试用例
-- 验证 Planner 能正确解析各种自然语言表达
-- 验证 Coder 生成的代码能正确执行
-- 验证 Streamlit 页面交互正常
+- 通过 Streamlit Web 界面进行端到端测试
 
 ---
 
@@ -370,7 +379,7 @@ def after_executor(state) -> str:
 |--------|------|------|
 | LLM 选型 | Planner: `qwen3.7-plus`，Coder: `deepseek-v4-pro`；统一通过 OpenAI 兼容 API 调用，API Key 存放于 `.env` | Planner 任务简单用通义，Coder 代码生成用 DeepSeek；统一的 API 框架降低接入复杂度 |
 | 代码生成方式 | LLM 生成完整 Python 代码 | 比 Function Calling 更灵活，能处理复杂组合逻辑 |
-| 重试机制 | 最多 2 次重试，附带错误信息 | 大多数语法/逻辑错误一次更正即可修复 |
+| 重试机制 | 不重试（max_retries=0） | LLM 错误多为系统性（幻觉导入/错key），重试无效；Executor 层 _fix_imports 兜底 |
 | 沙箱安全 | `subprocess.run()` 子进程隔离 | 进程级隔离比 `exec()` 更安全，不污染主进程状态，无需 Docker |
 | Streamlit 状态管理 | `st.session_state` | Streamlit 原生方案，无需额外状态库 |
 | Planner 的文件发现 | 用户通过下拉框直接选择文件 + `list_signals` 获取该文件信号列表 | 文件选择由前端完成，Planner 只需知道当前文件的信号名 |

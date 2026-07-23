@@ -46,7 +46,9 @@ def extract_signal(
             # 检查信号是否存在
             occurrences = mdf.whereis(signal_name)
             if not occurrences:
-                available = [ch.name for ch in mdf.iter_channels()]
+                # channels_db 是代理对象，MDF close 后会被清空，必须在 with 块内转为 list
+                db = mdf.channels_db
+                available = list(db.keys()) if db else [ch.name for ch in mdf.iter_channels()]
                 raise KeyError(
                     f"信号 '{signal_name}' 在文件中不存在。\n"
                     f"文件中可用的信号有 ({len(available)} 个):\n"

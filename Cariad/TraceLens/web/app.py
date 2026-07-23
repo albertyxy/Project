@@ -2,6 +2,7 @@
 """TraceLens - AI Agent for MF4 Signal Analysis - Streamlit 交互式前端。"""
 
 import os
+import re
 import sys
 import glob
 import time
@@ -47,11 +48,20 @@ def get_mf4_files() -> list:
     return sorted([os.path.basename(f) for f in files])
 
 
+def _escape_markdown_underscores(text: str) -> str:
+    """转义代码块外的下划线，防止信号名被 markdown 解析为斜体。"""
+    parts = re.split(r"(```[^`]*```)", text)
+    for i, part in enumerate(parts):
+        if not part.startswith("```"):
+            parts[i] = part.replace("_", "\\_")
+    return "".join(parts)
+
+
 def display_chat_history():
     """显示对话历史"""
     for role, content in st.session_state.chat_history:
         with st.chat_message(role):
-            st.markdown(content)
+            st.markdown(_escape_markdown_underscores(content))
 
 
 def handle_user_query(query: str):
@@ -148,18 +158,17 @@ def _display_failure(exec_result: dict, result: dict):
     retries = result.get("retries", 0)
     max_retries = result.get("max_retries", 2)
 
-    msg = (
-        f"### :x: 执行失败\n\n"
-        f"**错误信息**:\n```\n{error}\n```\n\n"
-        f"重试次数: {retries}/{max_retries}"
-    )
+    msg_parts = [
+        f"### :x: 执行失败",
+        f"**错误信息**:\n```\n{error}\n```",
+        f"重试次数: {retries}/{max_retries}",
+    ]
 
-    # 显示生成的代码（用于调试）
     code = result.get("generated_code")
     if code:
-        with st.expander("查看生成的代码"):
-            st.code(code, language="python")
+        msg_parts.append(f"**生成的代码**:\n```python\n{code}\n```")
 
+    msg = "\n\n".join(msg_parts)
     st.session_state.chat_history.append(("assistant", msg))
 
 

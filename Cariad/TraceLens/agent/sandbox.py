@@ -32,7 +32,9 @@ def execute_code(code: str, timeout: int = 30) -> Dict:
         with os.fdopen(tmp_fd, "w", encoding="utf-8") as f:
             f.write(code)
 
-        # 在子进程中执行
+        # 在子进程中执行，强制 UTF-8 避免 Windows 中文编码乱码
+        env = os.environ.copy()
+        env["PYTHONIOENCODING"] = "utf-8"
         result = subprocess.run(
             [sys.executable, tmp_path],
             capture_output=True,
@@ -40,6 +42,7 @@ def execute_code(code: str, timeout: int = 30) -> Dict:
             timeout=timeout,
             encoding="utf-8",
             errors="replace",
+            env=env,
         )
 
         success = result.returncode == 0

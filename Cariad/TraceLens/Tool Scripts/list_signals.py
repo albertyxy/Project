@@ -30,10 +30,8 @@ def list_signals(file_path: str) -> List[str]:
 
     try:
         with MDF(file_path) as mdf:
-            signal_names: List[str] = []
-            for channel in mdf.iter_channels():
-                signal_names.append(channel.name)
-            return signal_names
+            # channels_db 是代理对象，MDF close 后会被清空，必须在 with 块内转为 list
+            return list(mdf.channels_db.keys())
     except Exception as e:
         raise ValueError(
             f"无法读取 MF4 文件: {file_path}\n"

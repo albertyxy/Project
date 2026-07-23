@@ -102,6 +102,13 @@ def _build_coder_prompt(
         f"输出目录: {output_dir}",
         f"输出图片路径: {output_path}",
         "",
+        "【导入规则】每个函数从同名 .py 文件导入，禁止编造模块名：",
+        f"  import sys",
+        f"  sys.path.insert(0, r'{tools_dir}')",
+        f"  from extract_signal import extract_signal",
+        f"  from cross_reference import cross_reference  # res[0]['timestamp']['triggers']['targets']",
+        f"  from plot_signals import plot_signals",
+        "",
         "请根据以上信息生成 Python 代码。",
     ]
 

@@ -13,12 +13,15 @@ _TOOL_SCRIPTS_DIR = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "Tool Scripts")
 )
 
-# 四个工具模块及其中需要描述的函数名
+# 七个工具模块及其中需要描述的函数名
 _TOOL_MODULES: Dict[str, str] = {
     "list_signals.py": "list_signals",
     "extract_signal.py": "extract_signal",
     "extract_around_edges.py": "extract_around_edges",
+    "find_time_ranges.py": "find_time_ranges",
+    "signal_statistics.py": "signal_statistics",
     "plot_signals.py": "plot_signals",
+    "cross_reference.py": "cross_reference",
 }
 
 
@@ -114,45 +117,23 @@ def _extract_function_from_ast(
 
 
 def _format_function_desc(func_info: dict) -> str:
-    """将函数信息格式化为 LLM 可读的描述字符串"""
+    """将函数信息格式化为 LLM 可读的紧凑描述（省 token）。"""
     name = func_info["name"]
     params = func_info["params"]
     doc = func_info["doc"]
 
-    # 构建签名
+    # 紧凑签名：param=default，不含类型注解
     param_strs = []
     for p in params:
         p_str = p["name"]
-        if p["type"]:
-            p_str += f": {p['type']}"
         if p["default"]:
-            p_str += f" = {p['default']}"
+            p_str += f"={p['default']}"
         param_strs.append(p_str)
 
-    lines = [
-        f"## {name}",
-        f"签名: {name}({', '.join(param_strs)})",
-    ]
+    # 取 docstring 第一行作为功能说明
+    summary = doc.strip().split("\n")[0].strip() if doc else ""
 
-    if doc:
-        doc_lines = doc.strip().split("\n")
-        lines.append(f"功能: {doc_lines[0].strip()}")
-        if len(doc_lines) > 1:
-            lines.append("详细说明:")
-            for dl in doc_lines[1:]:
-                dl_stripped = dl.strip()
-                if dl_stripped:
-                    lines.append(f"  {dl_stripped}")
-    else:
-        lines.append("功能: 无文档")
-
-    lines.append("参数:")
-    for p in params:
-        type_str = f": {p['type']}" if p["type"] else ""
-        default_str = f" (默认: {p['default']})" if p["default"] else ""
-        lines.append(f"    - {p['name']}{type_str}{default_str}")
-
-    return "\n".join(lines)
+    return f"{name}({', '.join(param_strs)})\n  {summary}"
 
 
 def get_tools_description() -> str:
@@ -191,7 +172,12 @@ def get_tools_summary() -> str:
         "  - list_signals(file_path): 列出 MF4 文件中的所有信号名\n"
         "  - extract_signal(file_path, signal_name, start_time?, end_time?): 提取信号数据\n"
         "  - extract_around_edges(timestamps, samples, edge_type?, window_before?, window_after?): 检测边沿变化\n"
-        "  - plot_signals(data_dict, title, output_path, primary_signal?, mode?): 绘制信号曲线图"
+        "  - find_time_ranges(timestamps, samples, condition, threshold?, lower?, upper?, value?, ...): 按条件查找时间窗口\n"
+        "  - signal_statistics(timestamps, samples, percentiles?): 计算信号统计摘要\n"
+        "  - plot_signals(data_dict, title, output_path, primary_signal?, mode?): 绘制信号曲线图\n"
+        "  - cross_reference(file_path, trigger_signal?, target_signals, condition?, value?, triggers?): 跨信号关联查询\n"
+        "    单触发: trigger_signal + condition + value; 多触发: triggers=[{signal, condition, value}, ...]\n"
+        "    返回触发时刻各触发信号值和目标信号值"
     )
 
 

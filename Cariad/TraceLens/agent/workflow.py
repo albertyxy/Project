@@ -93,7 +93,7 @@ def run_agent(
     user_query: str,
     selected_file: str,
     data_dir: Optional[str] = None,
-    max_retries: int = 2,
+    max_retries: int = 0,
 ) -> Dict[str, Any]:
     """运行 TraceLens Agent。
 

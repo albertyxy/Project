@@ -1,0 +1,18 @@
+# TraceLens - MF4 Signal Analysis AI Agent
+# =========================================
+
+# Web 前端
+streamlit==1.44.0
+
+# AI Agent 框架
+langgraph
+openai
+python-dotenv
+pyyaml
+
+# MF4 文件解析
+asammdf
+
+# 数据处理与可视化
+numpy
+matplotlib
