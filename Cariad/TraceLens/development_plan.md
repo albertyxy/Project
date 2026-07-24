@@ -1,310 +1,561 @@
 # TraceLens PPT 报告生成功能 - 开发计划
 
-## 1. PPT 模板结构（已分析）
+## 1. PPT 模板结构
 
-**文件**: `data/Template/Test Template.pptx` | 20 页 | 13.3×7.5 英寸
+**文件**: `data/Template/Test Template.pptx` | 20 页 | 13.3x7.5 英寸
 
 ### Slide 1 - ECU 配置页
+
 ```
-标题: "WBA functions related ECU status"
-副标题: "Test vehicle actual configuration"
-表格 (8行×6列):
+标题: "02 ECU Configuration" (Rectangle 3)
+副标题: "WBA functions related ECU status" (Title 7)
+描述: "Test vehicle actual configuration" (Subtitle 6)
+表格 Table 19 (8行x6列):
   r0: Configuration of relevant ECU
-  r1: Vehicle: A5L TF156, VIN: LFV3A2FUXR389  ← 从 XML 填充
+  r1: Vehicle: {车型}, VIN: {VIN}           ← 从 XML 填充
   r2: Main-SG | Software-TNR. | Software-Version | ZDC/DS-version | Hardware-TNR. | Hardware-Version
-  r3: LRR   | 85E907567AM   | Y653             | 4B3909885CF    | 85E907567A    | H02
-  r4: MFK   | 85E907217AE   | X930             | 8B3000466CA    | 85E907217A    | H19
-  r5: HCP1  | 0Z7907479CQ   | 1662             | 8BG909586AC    | 0Z7907479K    | H30
-  r6: NR    | 95C907541AN   | X756             | 8BG909410BB    | 95C907541     | H07
-  r7: ESC   | 8BG909059F    | X555             | 8BG000504K     | 8BG909059B    | X06
+  r3-r7: {ECU名} | {SWTeilenummer} | {SWVersion} | {ZdcName}[{ZdcVersion}] | {HWTeilenummer} | {HWVersion}
 ```
 
-### Slide 2-20 - 场景分析页（20 页）
+### Slide 2-20 - 场景分析页（19 页）
 
 **每页统一布局:**
-| 位置 | Shape | 尺寸 | 内容 |
-|------|-------|------|------|
-| 顶部标题栏 | Rectangle 3 | 13.3×0.7in | "05 Trace Analysis" |
-| 左侧文本区 | Text Box | 5.7×5.3in | Scenario名 + Trace文件名(3 run) |
-| 左侧顶部小图 | Picture 6 | 1.0×1.6in | 对应 1.PNG |
-| 左侧顶部大图 | Picture 16/18/7 | 2.2-3.0×1.1-1.5in | 对应 2.PNG |
-| 左侧底部三小图 | Picture 26/23/19 | 1.9×1.1in | 对应 3-5.PNG |
-| 右侧 Run 标签 | 矩形 22 (×3) | 0.3×1.5in | "Run1"/"Run2"/"Run3" |
-| 右侧 Run 大图 | Picture 30/34/8 | 5.3×1.5in | 对应 6-8.PNG |
-| 右侧表格 (仅CPLA) | Table 65 | 7.6×1.0in, 4r×5c | TTC 信号数据 |
+| 位置 | Shape | 说明 |
+|------|-------|------|
+| 顶部标题栏 | Rectangle 3 (13.3x0.7in) | "05 Trace Analysis" |
+| 左侧文本框 | 文本框 2 (5.7x5.3in) | Scenario/Result/Trace 信息 |
+| **8 张图片** | 见下节 | 按从左到右、从上到下排列 |
 
-**场景→幻灯片映射:**
-| Slide | 场景文件夹 | 有表格 | 有文本 |
-|-------|-----------|--------|--------|
-| 2 | CPLA-25_Night_20kph | ✓ | ✓ |
-| 3 | CPLA-25_Night_40kph | ✓ | ✓ |
-| 4 | CPLA-25_Night_60kph | ✓ | ✓ |
-| 5 | CPLA-25_Night_80kph | ✓ | ✓ |
-| 6 | CPNCO-25_20kph | - | ✓ |
-| 7 | CPNCO-25_40kph | - | ✗ |
-| 8 | CBNAO-50_20kph | - | ✓ |
-| 9 | CBNAO-50_40kph | - | ✓ |
-| 10 | CBNAO-50_60kph | - | ✗ |
-| 11 | CPTA-LN-50_10kph | - | ✓ |
-| 12 | CPTA-LN-50_20kph | - | ✓ |
-| 13 | CPTA-LN-50_30kph | - | ✓ |
-| 14 | CPTA-LF-50_10kph | - | ✓ |
-| 15 | CPTA-LF-50_20kph | - | ✓ |
-| 16 | CPTA-LF-50_30kph | - | ✓ |
-| 17 | C2C SCP_30kph | - | ✓ |
-| 18 | C2C SCP_40kph | - | ✓ |
-| 19 | C2C SCP_50kph | - | ✓ |
-| 20 | C2C SCP_60kph | - | ✓ |
+### 图片映射（8 张图通用规则）
 
-**图片→PNG 映射（每场景 8 张图）:**
-| PNG | PPT Shape | 位置 |
-|-----|-----------|------|
-| 1.PNG | Picture 6 (1.0×1.6) | 左列第1 |
-| 2.PNG | Picture 16/18/7 (变) | 左列第2 |
-| 3.PNG | Picture 26 (1.9×1.1) | 左下列1 |
-| 4.PNG | Picture 23 (1.9×1.1) | 左下列2 |
-| 5.PNG | Picture 19 (1.9×1.1) | 左下列3 |
-| 6.PNG | Picture 30 (5.3×1.5) | Run1 大图 |
-| 7.PNG | Picture 34 (5.3×1.5) | Run2 大图 |
-| 8.PNG | Picture 8 (5.3×1.5) | Run3 大图 |
+每个场景 slide 有 8 个图片 shape，其 Shape Name 随 slide 不同而变化（如 Picture 16 / Picture 7 / Picture 18 等）。图片替换**不应硬编码 shape name**，而是按 shape 位置排序后 1:1 对应：
 
-### CPLA 表格结构（只有 Slide 2-5 有）
 ```
-4行 × 5列:
-r0: Case | Result | Radar Confirm TTC (s) | Confirm as pedestrian TTC (s) | Brake/VW Activated TTC (s)
-r1: Run1 | [Excel] | [MF4提取值]            | [MF4提取值]                   | [MF4提取值]
-r2: Run2 | [Excel] | [MF4提取值]            | [MF4提取值]                   | [MF4提取值]
-r3: Run3 | [Excel] | [MF4提取值]            | [MF4提取值]                   | [MF4提取值]
+算法:
+1. 获取 slide 上所有带 image 的 shape
+2. 按 Y 坐标分行（Y 容差 0.4in 内视为同一行）
+3. 每行内按 X 坐标从左到右排序
+4. 按行序展开为列表 shapes[0..7]
+5. 替换: 1.PNG -> shapes[0], 2.PNG -> shapes[1], ..., 8.PNG -> shapes[7]
 ```
-注：Slide 2-3 列4标题为 "Brake Activated TTC"，Slide 4-5 为 "VW Activated TTC"
 
-### 左侧文本框填充
+以 Slide 2 (CPLA-25_Night_20kph) 为例，排序后的映射：
+| 序号 | 视觉位置 | 典型 Shape Name |
+|------|---------|----------------|
+| 1.PNG | 左上大图 | Picture 16 |
+| 2.PNG | 左上小图 | Picture 6 |
+| 3.PNG | 左中上图 | Picture 23 |
+| 4.PNG | 右侧 Run1 大图 | Picture 30 |
+| 5.PNG | 左中下图 | Picture 26 |
+| 6.PNG | 右侧 Run2 大图 | Picture 34 |
+| 7.PNG | 左下大图 | Picture 19 |
+| 8.PNG | 右侧 Run3 大图 | Picture 8 |
+
+图片不存在时，对应 shape 替换为空（空白）。
+
+### 场景表格结构
+
+每个场景 slide 模板中均自带表格。表格的列结构因场景而异，由 `pptx_agent/table_mapping.yaml` 按场景名定义。填表时查 YAML 获取列定义，更新模板表格数据即可。
+
+**已明确列结构的场景:**
+
+| 场景 | 列结构 |
+|------|--------|
+| CPLA-25_Night_20/40kph | Case \| Result \| Radar Confirm TTC (s) \| Confirm as pedestrian TTC (s) \| **Brake** Activated TTC (s) |
+| CPLA-25_Night_60/80kph | Case \| Result \| Radar Confirm TTC (s) \| Confirm as pedestrian TTC (s) \| **VW** Activated TTC (s) |
+| CPTA-LN/CPTA-LF (all) | Case \| Result \| V_impact (km/h) |
+| CPNCO/CBNAO/C2C SCP | 待补充 (YAML 中已预留占位) |
+
+> CPTA 的 V_impact 值从 Trace Record.xlsx `Vimpact (km/h)` 列读取。
+
+### 左侧文本框内容
 
 模板原始格式:
 ```
 Scenario
-CPLA-25_Night_20kph
-
+{场景名}
 
 Trace
-Run1: Gen5_2026-06-30_20-39_Y653_RC1__0067.MF4
-Run2: Gen5_2026-06-30_20-45_Y653_RC1__0068.MF4
-Run3: Gen5_2026-06-30_20-49_Y653_RC1__0069.MF4
+Run1: {MF4文件名}
+Run2: {MF4文件名}
+Run3: {MF4文件名}
 ```
 
-需更新为（从 Trace Record.xlsx 读取）:
+需更新为:
 ```
 Scenario
-CPLA-25_Night_20kph
+{场景名}
 
 Result
-Run1: Pass
-Run2: Pass
-Run3: Pass
+Run1: {Pass/Collision/Failed}[ - V_impact = {值} kph]
+Run2: {Pass/Collision/Failed}[ - V_impact = {值} kph]
+Run3: {Pass/Collision/Failed}[ - V_impact = {值} kph]
 
 Trace
-Run1: Gen5_2026-06-30_20-39_Y653_RC1__0067.MF4
-Run2: Gen5_2026-06-30_20-45_Y653_RC1__0068.MF4
-Run3: Gen5_2026-06-30_20-49_Y653_RC1__0069.MF4
+Run1: {MF4文件名}
+Run2: {MF4文件名}
+Run3: {MF4文件名}
 ```
 
-**数据来源:**
-| 字段 | 来源 | 说明 |
-|------|------|------|
-| Scenario | 文件夹名 | 如 CPLA-25_Night_20kph |
-| Result | Trace Record.xlsx Pass/No 列 | Pass / Collision / (空→"/") |
-| Trace | Trace Record.xlsx CANape Trace 列 | MF4 文件名 |
-| 表格 Result 列 | 同 Result | 与左侧文本保持一致 |
+**V_impact 追加规则:**
+- 仅当 Result = `Collision` 时，在该 Run 行末尾追加 ` - V_impact = {值} kph`
+- V_impact 值从 Trace Record.xlsx `Vimpact (km/h)` 列读取（保留原始精度）
+- Pass 或 Failed 不追加
+
+**Result 颜色规则:**
+| Result 值 | 字体颜色 |
+|-----------|---------|
+| Pass | 绿色 |
+| Collision | 橙色 (不含后面 ` - V_impact = ...`) |
+| Failed | 红色 |
+| (空/无数据) | 灰色 "/" |
+
+**Run 数量处理:**
+- Trace Record 中某个场景有 >3 个 run → 只取前 3 个
+- Trace Record 中某个场景有 <3 个 run → 有几个写几个（多余的 Run 行留空）
+
+### 场景->幻灯片映射
+
+| Slide | 场景文件夹 |
+|-------|-----------|
+| 2 | CPLA-25_Night_20kph |
+| 3 | CPLA-25_Night_40kph |
+| 4 | CPLA-25_Night_60kph |
+| 5 | CPLA-25_Night_80kph |
+| 6 | CPNCO-25_20kph |
+| 7 | CPNCO-25_40kph |
+| 8 | CBNAO-50_20kph |
+| 9 | CBNAO-50_40kph |
+| 10 | CBNAO-50_60kph |
+| 11 | CPTA-LN-50_10kph |
+| 12 | CPTA-LN-50_20kph |
+| 13 | CPTA-LN-50_30kph |
+| 14 | CPTA-LF-50_10kph |
+| 15 | CPTA-LF-50_20kph |
+| 16 | CPTA-LF-50_30kph |
+| 17 | C2C SCP_30kph |
+| 18 | C2C SCP_40kph |
+| 19 | C2C SCP_50kph |
+| 20 | C2C SCP_60kph |
+
+---
 
 ## 2. Trace Record 数据结构
 
-**文件**: `data/A5L 99C WBA LRR Y653/Trace Record.xlsx` | Sheet: "A5L" | 67 行 × 12 列
+**文件**: `data/{项目名}/Trace Record.xlsx` | Sheet: "A5L"
 
-**关键列:**
+**关键列 (B-L):**
 | 列 | 名称 | 说明 |
 |----|------|------|
-| A | Scenario | 测试场景名（如 CPNCO-25, CPTA-LN-50, CPLA-25 Night）|
-| B | Function | AEB / FCW |
-| C | VVUT | 测试速度 (km/h) |
-| E | Overlap | 重叠率 |
-| F | Runs | run1/run2/run3 |
-| G | Pass/No | Pass / Collision / (空=未测试) |
-| H | CANape Trace | MF4 文件名 |
-| J | FCW_TTC (s) | TTC 值 |
-| K | Vimpact (km/h) | 碰撞速度 |
+| B | Scenario | 测试场景名 |
+| C | Function | AEB / FCW |
+| D | VVUT | 测试速度 (km/h) |
+| F | Overlap | 重叠率 |
+| G | Runs | run1/run2/run3(/run4) |
+| H | Pass/No | Pass / Collision / Failed / (空=未测试) |
+| I | CANape Trace | MF4 文件名 |
+| K | FCW_TTC (s) | TTC 值 |
+| L | Vimpact (km/h) | 碰撞速度 |
 
-**场景→文件夹名称映射:**
+**文件夹名构造规则:**
 ```
-文件夹名 = Scenario + "_" + VVUT + "kph"
-例如: CPLA-25 Night + "_" + 20 + "kph" → CPLA-25_Night_20kph
+文件夹名 = Scenario.replace('\n', '_') + "_" + VVUT + "kph"
+例如: "CPLA-25\nNight" + "_" + "20" + "kph" → "CPLA-25_Night_20kph"
 ```
+
+> 注：Scenario 列中原始数据可能包含换行符（如 `CPLA-25\nNight`），读取后需 `replace('\n', '_')` 处理。
+
+---
 
 ## 3. Trace 匹配流程
 
-**核心逻辑：数据文件夹是地面真相**
+**核心逻辑：数据文件夹是地面真相。**
 
 ```
-1. 读取 data/{项目名}/ 下所有场景文件夹
+1. 扫描 data/{项目名}/ 下所有场景文件夹
 2. 对每个场景文件夹：
    a. 根据文件夹名匹配 PPT 中对应 Slide（通过文本框 Scenario 名）
-   b. 去 Trace Record.xlsx 找 Scenario 列匹配 + VVUT 匹配的行
-   c. 读取 Run1/2/3 的 CANape Trace 名、Pass/Fail 状态
+   b. 去 Trace Record.xlsx 找 Scenario 列匹配 + VVUT 匹配的行（Scenario+VVUT 是充分条件，忽略 Function）
+   c. 读取 Run1/2/3 的 CANape Trace 名、Pass/No 状态、Vimpact 值
    d. 在 data/{项目名}/ 下查找对应的 MF4 文件
    e. 如果 MF4 存在 → 提取信号数据填表
-   f. 如果 MF4 不存在 → 表格保留模板占位或填"/"
-3. 没有对应数据文件夹的 Slide → 保留模板不动
+   f. 如果 MF4 不存在 → 表格填 "/"
+3. 没有对应数据文件夹的 Slide → 删除该页（python-pptx 需通过操作 slide XML 删除）
 ```
 
-**当前状态**: 只有 1 个 MF4（Gen5_2026-06-30_20-39_Y653_RC1__0067），可填 CPLA-25_Night_20kph 的 Run1
+**MF4 文件位置**: 所有 MF4 统一存放在 `data/{项目名}/` 目录下（非场景子文件夹）。
 
-## 4. XML → Slide 1 ECU 配置映射
+**Run 数量处理:**
+- Excel 中某场景有 run4 → 忽略，只取 run1/run2/run3
+- Excel 中某场景只有 run1/run2 → 只填 2 行，Run3 留空
+- PPT 模板始终显示 3 个 Run 标签
+
+---
+
+## 4. XML -> Slide 1 ECU 配置映射
 
 **XML 文件**: `data/{项目名}/*.xml`
 
-**关键 XML 字段:**
 | XML 字段 | PPT 用途 |
 |----------|---------|
 | `Fahrgestellnummer` | Slide 1 VIN |
 | `UserProjekt` | Slide 1 车型名 |
 | `WegStrecke` + `EinheitWegStrecke` | Slide 1 里程 |
 
-**ECU 映射（统一用 XML `Systembezeichnung` 字段匹配）:**
-| PPT 行 | PPT 名称 | XML Systembezeichnung |
-|--------|---------|----------------------|
-| r3 | LRR | "WBA Bosch PPE" |
-| r4 | MFK | "MFK5" |
-| r5 | HCP1 | "HCP1 BOSCH EP" |
-| r6 | NR | "Nanoradar 1" |
-| r7 | ESC | "ABS" |
+**ECU 映射（通过 XML `Systembezeichnung` 字段匹配）:**
+
+| PPT 行 | PPT ECU 名 | XML Systembezeichnung | XML 字段来源 |
+|--------|-----------|----------------------|-------------|
+| r3 | LRR | "WBA Bosch PPE" | SWTeilenummer, SWVersion, ZdcName, ZdcVersion, HWTeilenummer, HWVersion |
+| r4 | MFK | "MFK5" | 同上 |
+| r5 | HCP1 | "HCP1 BOSCH EP" | 同上 |
+| r6 | NR | "Nanoradar 1" | 同上 |
+| r7 | ESC | "ABS" | 同上 |
+
+**填充格式:**
+```
+Software-TNR.: {SWTeilenummer}
+Software-Version: {SWVersion}
+ZDC/DS-version: {ZdcName}[{ZdcVersion}]
+Hardware-TNR.: {HWTeilenummer}
+Hardware-Version: {HWVersion}
+```
+
+---
 
 ## 5. 表格信号映射（YAML 配置）
 
-信号→表格列的映射写在 `pptx_agent/table_mapping.yaml`。
+信号->表格列的映射写在 `pptx_agent/table_mapping.yaml`，**按场景名组织**，不同场景的表格结构不同。
 
-### 映射配置
-
-每个信号使用完整路径，不区分端口/前缀。
+### YAML 结构设计
 
 ```yaml
 # pptx_agent/table_mapping.yaml
+# 按场景名组织，每个场景独立定义表格结构
 
-columns:
-  - col_index: 2
-    header: "Radar Confirm TTC (s)"
-    description: "雷达+摄像头均确认目标为行人时的TTC"
-    extract:
-      method: cross_reference
-      target: "_g_Common_VAG_..._m_values._0_._m_objectData._m_ttc._m_value"
-      triggers:
-        - signal: "_g_Common_VAG_..._m_values._0_._m_objectData._m_camConfirmation"
-          condition: equals
-          value: 1
-        - signal: "_g_Common_VAG_..._m_values._0_._m_objectData._m_radarConfirmation"
-          condition: equals
-          value: 1
-        - signal: "_g_Common_VAG_..._m_values._0_._m_objectData._m_targetObjType"
-          condition: equals
-          value: "pedestrian"
-    format: ".2f"
+scenarios:
+  "CPLA-25_Night_20kph":
+    table:
+      rows: 4       # 表头 + 3个Run
+      cols: 5
+    columns:
+      - col_index: 0
+        header: "Case"
+        source: fixed
+      - col_index: 1
+        header: "Result"
+        source: trace_record   # 从 Trace Record Pass/No 列读取
+      - col_index: 2
+        header: "Radar Confirm TTC (s)"
+        description: "雷达+摄像头均确认目标时的TTC"
+        extract:
+          method: cross_reference
+          target: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_ttc._m_value"
+          triggers:
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_camConfirmation"
+              condition: equals
+              value: 1
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_radarConfirmation"
+              condition: equals
+              value: 1
+          format: ".2f"
+      - col_index: 3
+        header: "Confirm as pedestrian TTC (s)"
+        description: "确认为行人时的TTC"
+        extract:
+          method: cross_reference
+          target: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_ttc._m_value"
+          triggers:
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_camConfirmation"
+              condition: equals
+              value: 1
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_radarConfirmation"
+              condition: equals
+              value: 1
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_targetObjType"
+              condition: equals
+              value: "pedestrian"
+          format: ".2f"
+      - col_index: 4
+        header: "Brake Activated TTC (s)"
+        description: "制动激活时的TTC"
+        extract:
+          method: cross_reference
+          target: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_ttc._m_value"
+          triggers:
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnablePostProc_SfRunnablePostProc_m_portWBA05_out_local.TChangeableMemPool._._._m_arrayPool._1_._elem._m_DE_SG_WBA_05_st._WBA_Status_dAB"
+              condition: becomes
+              value: 4
+          format: ".2f"
 
-  - col_index: 3
-    header: "Confirm as pedestrian TTC (s)"
-    description: "确认为行人时的TTC"
-    extract:
-      method: cross_reference
-      target: "_g_Common_VAG_..._m_values._0_._m_objectData._m_ttc._m_value"
-      triggers:
-        - signal: "_g_Common_VAG_..._m_values._0_._m_objectData._m_targetObjType"
-          condition: equals
-          value: "pedestrian"
-    format: ".2f"
+  "CPLA-25_Night_40kph":
+    # 与 20kph 相同结构，使用 Brake Activated TTC
+    $ref: "CPLA-25_Night_20kph"
 
-  - col_index: 4
-    header: "Brake Activated TTC (s)"
-    description: "制动激活(dAB=4)时的TTC"
-    extract:
-      method: cross_reference
-      target: "_g_Common_VAG_..._m_values._0_._m_objectData._m_ttc._m_value"
-      triggers:
-        - signal: "_g_Common_VAG_..._WBA_Status_dAB"
-          condition: becomes
-          value: 4
-    format: ".2f"
+  "CPLA-25_Night_60kph":
+    table:
+      rows: 4
+      cols: 5
+    columns:
+      - col_index: 0
+        header: "Case"
+        source: fixed
+      - col_index: 1
+        header: "Result"
+        source: trace_record
+      - col_index: 2
+        header: "Radar Confirm TTC (s)"
+        description: "雷达+摄像头均确认目标时的TTC"
+        extract:
+          method: cross_reference
+          target: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_ttc._m_value"
+          triggers:
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_camConfirmation"
+              condition: equals
+              value: 1
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_radarConfirmation"
+              condition: equals
+              value: 1
+          format: ".2f"
+      - col_index: 3
+        header: "Confirm as pedestrian TTC (s)"
+        description: "确认为行人时的TTC"
+        extract:
+          method: cross_reference
+          target: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_ttc._m_value"
+          triggers:
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_camConfirmation"
+              condition: equals
+              value: 1
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_radarConfirmation"
+              condition: equals
+              value: 1
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_targetObjType"
+              condition: equals
+              value: "pedestrian"
+          format: ".2f"
+      - col_index: 4
+        header: "VW Activated TTC (s)"
+        description: "VW激活时的TTC"
+        extract:
+          method: cross_reference
+          target: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_ttc._m_value"
+          triggers:
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnablePostProc_SfRunnablePostProc_m_portWBA05_out_local.TChangeableMemPool._._._m_arrayPool._1_._elem._m_DE_SG_WBA_05_st._WBA_Status_VW"
+              condition: becomes
+              value: 4
+          format: ".2f"
 
-  - col_index: 4
-    header: "VW Activated TTC (s)"
-    description: "VW激活(VW=4)时的TTC"
-    extract:
-      method: cross_reference
-      target: "_g_Common_VAG_..._m_values._0_._m_objectData._m_ttc._m_value"
-      triggers:
-        - signal: "_g_Common_VAG_..._WBA_Status_VW"
-          condition: becomes
-          value: 4
-    format: ".2f"
+  "CPLA-25_Night_80kph":
+    $ref: "CPLA-25_Night_60kph"
 
-result_source: Trace_Record
+  "CPTA-LN-50_10kph":
+    table:
+      rows: 4
+      cols: 3
+    columns:
+      - col_index: 0
+        header: "Case"
+        source: fixed
+      - col_index: 1
+        header: "Result"
+        source: trace_record
+      - col_index: 2
+        header: "V_impact (km/h)"
+        source: trace_record    # 从 Trace Record Vimpact 列读取
+        format: ".3f"
+
+  "CPTA-LN-50_20kph":
+    $ref: "CPTA-LN-50_10kph"
+
+  "CPTA-LN-50_30kph":
+    $ref: "CPTA-LN-50_10kph"
+
+  "CPTA-LF-50_10kph":
+    $ref: "CPTA-LN-50_10kph"
+
+  "CPTA-LF-50_20kph":
+    $ref: "CPTA-LN-50_10kph"
+
+  "CPTA-LF-50_30kph":
+    $ref: "CPTA-LN-50_10kph"
+
+  # -- 以下场景表格结构待补充，预留占位 --
+  "CPNCO-25_20kph":
+    # TODO: 列结构待确认
+    table:
+      rows: 4
+      cols: 0   # 待补充
+    columns: []
+
+  "CPNCO-25_40kph":
+    $ref: "CPNCO-25_20kph"
+
+  "CBNAO-50_20kph":
+    # TODO: 列结构待确认
+    table:
+      rows: 4
+      cols: 0
+    columns: []
+
+  "CBNAO-50_40kph":
+    $ref: "CBNAO-50_20kph"
+
+  "CBNAO-50_60kph":
+    $ref: "CBNAO-50_20kph"
+
+  "C2C SCP_30kph":
+    # TODO: 列结构待确认
+    table:
+      rows: 4
+      cols: 0
+    columns: []
+
+  "C2C SCP_40kph":
+    $ref: "C2C SCP_30kph"
+
+  "C2C SCP_50kph":
+    $ref: "C2C SCP_30kph"
+
+  "C2C SCP_60kph":
+    $ref: "C2C SCP_30kph"
 ```
 
-注：每个 Scenario 信号路径可能略有不同，在配置中按场景调整。
+> 每个信号使用其独立完整路径，无需统一 slot 编号。
+
+### cross_reference() 参数映射
+
+YAML 中 `extract` 字段与 `cross_reference()` 参数一一对应，`fill_scenario_table()` 直接转换调用：
+
+```python
+result = cross_reference(
+    file_path=mf4_path,
+    target_signals=[col["extract"]["target"]],   # YAML 单值 -> 列表
+    triggers=col["extract"]["triggers"],          # 直接透传
+    max_points=1,
+)
+# 返回值: [{"timestamp": ..., "targets": {target信号全名: 值}}]
+cell_value = format(result[0]["targets"][col["extract"]["target"]], col["extract"]["format"])
+```
+
+无 MF4 或 `cross_reference()` 返回空列表时，填 `"/"`。
+
+### 填表流程
+
+```
+1. 根据场景名查 table_mapping.yaml 获取列定义
+2. 找到模板表格，按列定义更新数据
+3. 每列的 source 字段决定数据来源:
+   - fixed: 固定值 (如 "Run1")
+   - trace_record: 从 Trace Record.xlsx 读取
+   - cross_reference: 按上方参数映射调用 cross_reference()
+4. cross_reference 类型的列仅在 MF4 文件存在时执行，否则填 "/"
+```
+
+---
 
 ## 6. 架构设计
 
 ```
 pptx_agent/                       # 新建模块
-├── __init__.py
-├── table_mapping.yaml            # 信号→表格列映射配置
-├── ppt_report_tool.py            # PPT 报告生成工具
-│   ├── analyze_template()        # 分析 PPT 结构
-│   ├── read_trace_record()       # 读取 Trace Record.xlsx
-│   ├── match_traces()            # 匹配 MF4 文件 → 场景
-│   ├── populate_slide1()         # 填 Slide 1（XML 元数据 + ECU 表）
-│   ├── replace_scenario_images() # 替换场景图片（1-8.PNG）
-│   ├── fill_cpla_table()         # 填 CPLA 表格（MF4 信号提取）
-│   └── generate_report()         # 主流程
-└── template_config.json          # 模板映射配置
+  __init__.py
+  table_mapping.yaml              # 信号->表格列映射配置 (按场景组织)
+  ppt_report_tool.py              # PPT 报告生成工具
+    read_trace_record()           # 读取 Trace Record.xlsx，清洗数据
+    match_traces()                # 匹配 MF4 文件 -> 场景 -> Slide
+    delete_unused_slides()        # 删除无对应数据文件夹的 slide
+    populate_slide1()             # 填 Slide 1 (XML 元数据 + ECU 表)
+    replace_scenario_images()     # 替换场景图片 (1-8.PNG，按位置排序)
+    fill_scenario_table()         # 填场景表格 (MF4 信号提取或 Trace Record)
+    fill_scenario_text()          # 填场景文本框 (Scenario/Result/Trace, Collision加V_impact)
+    generate_report()             # 主流程入口
+  template_config.json            # 模板路径和场景->Slide 映射
 ```
+
+**generate_report() 执行顺序:**
+
+```
+read_trace_record()
+  → match_traces()
+  → delete_unused_slides()       # 删除无数据文件夹的 slide
+  → populate_slide1()            # 填 ECU 配置页
+  → for 每个有数据的场景 slide:
+      replace_scenario_images()  # 替换 8 张图
+      fill_scenario_text()       # 填 Scenario/Result/Trace
+      fill_scenario_table()      # 填表格
+  → prs.save(output_path)
+```
+
+---
 
 ## 7. 实施步骤
 
-### Step 1: 基础环境 [x]
-- [x] `python-pptx`, `openpyxl`, `Pillow` 已安装
-- [x] PPT 模板结构已分析 (20页)
+### Step 1: 验证基础环境 [x]
+- [x] `python-pptx`, `openpyxl`, `Pillow`, `asammdf` 在 conda `project` 环境可用
+- [x] PPT 模板结构已分析 (20页，8 图片/slide)
 - [x] Trace Record.xlsx 结构已分析
+- [x] XML ECU 字段映射已验证
+- [x] MF4 信号路径已验证（实际路径与 YAML 需精确对应）
 
-### Step 2: 创建 pptx_agent 模块 [ ]
-- [ ] 创建 `pptx_agent/` 目录
-- [ ] 创建 `table_mapping.yaml` 信号映射配置
-- [ ] 实现 `read_trace_record()`: 读取 Excel，返回场景→trace映射
-- [ ] 实现 `match_traces()`: 对比 Trace Record 和实际 MF4 文件
+### Step 2: 创建 pptx_agent 模块框架 [ ]
+- [ ] 创建 `pptx_agent/` 目录和 `__init__.py`
+- [ ] 创建 `table_mapping.yaml`（按场景组织，信号路径按上述 YAML 示例写入）
+- [ ] 实现 `read_trace_record()`:
+  - 读取 Excel，处理 Scenario 换行符 (`\n` -> `_`)
+  - 归一化 Pass/No 值 (Pass/Collision/Failed)
+  - 构造 `{文件夹名: {run1: {trace, result, vimpact}, run2: {...}, run3: {...}}}` 字典
+- [ ] 实现 `match_traces()`:
+  - 扫描场景文件夹 -> 匹配 Trace Record -> 查找 MF4 文件
+  - MF4 查找路径: `data/{项目名}/*.MF4`
+- [ ] 实现 `delete_unused_slides()`:
+  - 遍历 Slide 2-20，无对应数据文件夹的 slide 删除（python-pptx 需操作 XML）
 
 ### Step 3: 图片替换 [ ]
-- [ ] 建立 PNG→Shape 映射表
-- [ ] 实现 `replace_scenario_images()`: 遍历场景文件夹，1:1 替换 8 张图片
-- [ ] 处理 Slide 7, 10 缺少文本框的问题
+- [ ] 实现 `replace_scenario_images()`:
+  - 对每个场景 slide，获取所有图片 shape
+  - 按 Y 分行 (容差 0.4in)，行内按 X 排序 -> 得到 8 个 shape 的有序列表
+  - 1:1 替换: `{场景文件夹}/i.PNG` -> shapes[i-1]
+  - PNG 不存在时置空对应 shape
 
 ### Step 4: 表格数据填充 [ ]
 - [ ] 加载 `table_mapping.yaml` 配置
-- [ ] 复用 `cross_reference()` 提取 TTC 值（保留两位小数）
-- [ ] 实现 `fill_cpla_table()`: 填充 Slide 2-5 的 TTC 表格
-- [ ] 读取 Trace Record 填 Result 列
+- [ ] 实现 `fill_scenario_table()`:
+  - 查 YAML 获取该场景的列定义
+  - 更新模板表格数据
+  - 根据每列 `source` 字段分流数据来源
+- [ ] Trace Record 来源列: 填 Result (带颜色)、V_impact
+- [ ] cross_reference 来源列: 仅在 MF4 存在时执行提取，否则填 "/"
+- [ ] Result 列颜色: Pass=绿色, Collision=橙色, Failed=红色
 
 ### Step 5: Slide 1 元数据 [ ]
-- [ ] 解析 XML 提取 VIN、ECU 信息
-- [ ] 根据 ECU 名称映射填充 ECU 配置表
+- [ ] 解析 XML 提取 VIN、车型、里程
+- [ ] 根据 ECU `Systembezeichnung` 匹配并填充 5 行 ECU 配置
 
-### Step 6: 端到端测试 [ ]
+### Step 6: 场景文本框填充 [ ]
+- [ ] 实现 `fill_scenario_text()`:
+  - 更新 Scenario 名、Result (3 run)、Trace (3 run)
+  - Result 值带颜色: Pass=绿, Collision=橙色, Failed=红
+  - Collision 行追加 ` - V_impact = {值} kph` (值来源 Trace Record)
+  - 不足 3 个 run -> 有几个填几个
+
+### Step 7: 端到端测试 [ ]
 - [ ] 用 A5L 99C WBA LRR Y653 数据生成报告
-- [ ] 验证图片替换正确
-- [ ] 验证表格 TTC 值与 CANape 一致
+- [ ] 验证图片替换正确 (按位置排序)
+- [ ] 验证表格 TTC 值与 CANape 一致 (有 MF4 的 Run)
+- [ ] 验证文本框颜色正确
+
+---
 
 ## 8. 关键设计决策
 
 | 决策点 | 方案 | 理由 |
 |--------|------|------|
 | 架构定位 | 独立 `pptx_agent/` 模块 | 报告生成是确定性流程，无需 LLM |
-| 场景选择 | 数据文件夹存在 → 做该页PPT | 文件夹是地面真相 |
-| 信号映射 | YAML 配置文件 | 换模板/换信号只需改配置 |
-| 图片替换 | 按 Shape name 定位 + 1:1 PNG 序号 | 模板 layout 固定 |
-| 表格填充 | `cross_reference()` + MF4 信号提取 | 复用现有工具 |
-| 信号映射 | YAML 完整路径，每列独立配置 | 换信号只需改配置，每个信号独立完整路径 |
+| 图片映射 | 按 shape 位置排序，不硬编码 shape name | 不同 slide 用不同 shape name，位置排序通用 |
+| 场景选择 | 数据文件夹存在 -> 做该页 PPT | 文件夹是地面真相 |
+| YAML 结构 | **按场景名组织**，每场景独立定义列 | 不同场景表格结构不同 (CPLA 5列, CPTA 3列) |
+| 表格填充 | 更新模板表格，按 YAML 列定义填充 | 所有 slide 模板均有表格 |
+| 信号映射 | YAML 完整路径，每列独立配置 | 换信号只需改配置 |
+| MF4 查找 | `data/{项目名}/` 目录下统一查找 | MF4 不在场景子文件夹 |
+| Run 数量 | >3取前3，<3有几个填几个 | PPT 模板固定 3 个 Run |
+| Result 颜色 | 代码中根据值自动着色 | Pass=绿, Collision=橙色, Failed=红 |
