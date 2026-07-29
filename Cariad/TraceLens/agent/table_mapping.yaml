@@ -1,0 +1,740 @@
+# -*- coding: utf-8 -*-
+# pptx_agent/table_mapping.yaml
+# 按场景名组织，每个场景独立定义表格结构
+
+scenarios:
+  # ============================================================
+  # CPLA 场景 -- Brake Activated TTC
+  # ============================================================
+  "CPLA-25_Night_20kph":
+    table:
+      rows: 4       # 表头 + 3个Run
+      cols: 5
+    columns:
+      - col_index: 0
+        header: "Case"
+        source: fixed
+      - col_index: 1
+        header: "Result"
+        source: trace_record   # 从 Trace Record Pass/No 列读取
+      - col_index: 2
+        header: "Radar Confirm TTC (s)"
+        description: "雷达+摄像头均确认目标时的TTC"
+        extract:
+          method: cross_reference
+          target: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_ttc._m_value"
+          triggers:
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_camConfirmation"
+              condition: equals
+              value: 1
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_radarConfirmation"
+              condition: equals
+              value: 1
+          format: ".2f"
+      - col_index: 3
+        header: "Confirm as pedestrian TTC (s)"
+        description: "确认为行人时的TTC"
+        extract:
+          method: cross_reference
+          target: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_ttc._m_value"
+          triggers:
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_camConfirmation"
+              condition: equals
+              value: 1
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_radarConfirmation"
+              condition: equals
+              value: 1
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_targetObjType"
+              condition: equals
+              value: "pedestrian"
+          format: ".2f"
+      - col_index: 4
+        header: "Brake Activated TTC (s)"
+        description: "制动激活时的TTC"
+        extract:
+          method: cross_reference
+          target: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_ttc._m_value"
+          triggers:
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnablePostProc_SfRunnablePostProc_m_portWBA05_out_local.TChangeableMemPool._._._m_arrayPool._1_._elem._m_DE_SG_WBA_05_st._WBA_Status_dAB"
+              condition: becomes
+              value: 4
+          format: ".2f"
+
+  "CPLA-25_Night_40kph":
+    table:
+      rows: 4
+      cols: 5
+    columns:
+      - col_index: 0
+        header: "Case"
+        source: fixed
+      - col_index: 1
+        header: "Result"
+        source: trace_record
+      - col_index: 2
+        header: "Radar Confirm TTC (s)"
+        description: "雷达+摄像头均确认目标时的TTC"
+        extract:
+          method: cross_reference
+          target: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_ttc._m_value"
+          triggers:
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_camConfirmation"
+              condition: equals
+              value: 1
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_radarConfirmation"
+              condition: equals
+              value: 1
+          format: ".2f"
+      - col_index: 3
+        header: "Confirm as pedestrian TTC (s)"
+        description: "确认为行人时的TTC"
+        extract:
+          method: cross_reference
+          target: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_ttc._m_value"
+          triggers:
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_camConfirmation"
+              condition: equals
+              value: 1
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_radarConfirmation"
+              condition: equals
+              value: 1
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_targetObjType"
+              condition: equals
+              value: "pedestrian"
+          format: ".2f"
+      - col_index: 4
+        header: "Brake Activated TTC (s)"
+        description: "制动激活时的TTC"
+        extract:
+          method: cross_reference
+          target: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_ttc._m_value"
+          triggers:
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnablePostProc_SfRunnablePostProc_m_portWBA05_out_local.TChangeableMemPool._._._m_arrayPool._1_._elem._m_DE_SG_WBA_05_st._WBA_Status_dAB"
+              condition: becomes
+              value: 4
+          format: ".2f"
+
+  # ============================================================
+  # CPLA 场景 -- VW Activated TTC
+  # ============================================================
+  "CPLA-25_Night_60kph":
+    table:
+      rows: 4
+      cols: 5
+    columns:
+      - col_index: 0
+        header: "Case"
+        source: fixed
+      - col_index: 1
+        header: "Result"
+        source: trace_record
+      - col_index: 2
+        header: "Radar Confirm TTC (s)"
+        description: "雷达+摄像头均确认目标时的TTC"
+        extract:
+          method: cross_reference
+          target: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_ttc._m_value"
+          triggers:
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_camConfirmation"
+              condition: equals
+              value: 1
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_radarConfirmation"
+              condition: equals
+              value: 1
+          format: ".2f"
+      - col_index: 3
+        header: "Confirm as pedestrian TTC (s)"
+        description: "确认为行人时的TTC"
+        extract:
+          method: cross_reference
+          target: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_ttc._m_value"
+          triggers:
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_camConfirmation"
+              condition: equals
+              value: 1
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_radarConfirmation"
+              condition: equals
+              value: 1
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_targetObjType"
+              condition: equals
+              value: "pedestrian"
+          format: ".2f"
+      - col_index: 4
+        header: "VW Activated TTC (s)"
+        description: "VW激活时的TTC"
+        extract:
+          method: cross_reference
+          target: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_ttc._m_value"
+          triggers:
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnablePostProc_SfRunnablePostProc_m_portWBA05_out_local.TChangeableMemPool._._._m_arrayPool._1_._elem._m_DE_SG_WBA_05_st._WBA_Status_VW"
+              condition: becomes
+              value: 4
+          format: ".2f"
+
+  "CPLA-25_Night_80kph":
+    table:
+      rows: 4
+      cols: 5
+    columns:
+      - col_index: 0
+        header: "Case"
+        source: fixed
+      - col_index: 1
+        header: "Result"
+        source: trace_record
+      - col_index: 2
+        header: "Radar Confirm TTC (s)"
+        description: "雷达+摄像头均确认目标时的TTC"
+        extract:
+          method: cross_reference
+          target: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_ttc._m_value"
+          triggers:
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_camConfirmation"
+              condition: equals
+              value: 1
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_radarConfirmation"
+              condition: equals
+              value: 1
+          format: ".2f"
+      - col_index: 3
+        header: "Confirm as pedestrian TTC (s)"
+        description: "确认为行人时的TTC"
+        extract:
+          method: cross_reference
+          target: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_ttc._m_value"
+          triggers:
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_camConfirmation"
+              condition: equals
+              value: 1
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_radarConfirmation"
+              condition: equals
+              value: 1
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_targetObjType"
+              condition: equals
+              value: "pedestrian"
+          format: ".2f"
+      - col_index: 4
+        header: "VW Activated TTC (s)"
+        description: "VW激活时的TTC"
+        extract:
+          method: cross_reference
+          target: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_ttc._m_value"
+          triggers:
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnablePostProc_SfRunnablePostProc_m_portWBA05_out_local.TChangeableMemPool._._._m_arrayPool._1_._elem._m_DE_SG_WBA_05_st._WBA_Status_VW"
+              condition: becomes
+              value: 4
+          format: ".2f"
+
+  # ============================================================
+  # CPTA 场景 
+  # ============================================================
+  "CPTA-LN-50_10kph":
+    table:
+      rows: 4
+      cols: 5
+    columns:
+      - col_index: 0
+        header: "Case"
+        source: fixed
+      - col_index: 1
+        header: "Result"
+        source: trace_record
+      - col_index: 2
+        header: "WBA Target Confirm TTC (s)"
+        description: "确认为目标时的TTC"
+        extract:
+          method: cross_reference
+          target: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_ttc._m_value"
+          triggers:
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_camConfirmation"
+              condition: equals
+              value: 1
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_radarConfirmation"
+              condition: equals
+              value: 1
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_targetObjType"
+              condition: equals
+              value: "pedestrian"
+          format: ".2f"  
+      - col_index: 3
+        header: "Brake Activated TTC (s)"
+        description: "Brake激活时的TTC"
+        extract:
+          method: cross_reference
+          target: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_ttc._m_value"
+          triggers:
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnablePostProc_SfRunnablePostProc_m_portWBA05_out_local.TChangeableMemPool._._._m_arrayPool._1_._elem._m_DE_SG_WBA_05_st._WBA_Status_aFB"
+              condition: becomes
+              value: 4
+          format: ".2f"      
+      - col_index: 4
+        header: "V_impact (km/h)"
+        source: trace_record    # 从 Trace Record Vimpact 列读取
+        format: ".3f"
+
+  "CPTA-LN-50_20kph":
+    table:
+      rows: 4
+      cols: 5
+    columns:
+      - col_index: 0
+        header: "Case"
+        source: fixed
+      - col_index: 1
+        header: "Result"
+        source: trace_record
+      - col_index: 2
+        header: "WBA Target Confirm TTC (s)"
+        description: "确认为目标时的TTC"
+        extract:
+          method: cross_reference
+          target: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_ttc._m_value"
+          triggers:
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_camConfirmation"
+              condition: equals
+              value: 1
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_radarConfirmation"
+              condition: equals
+              value: 1
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_targetObjType"
+              condition: equals
+              value: "pedestrian"
+          format: ".2f"  
+      - col_index: 3
+        header: "Brake Activated TTC (s)"
+        description: "Brake激活时的TTC"
+        extract:
+          method: cross_reference
+          target: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_ttc._m_value"
+          triggers:
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnablePostProc_SfRunnablePostProc_m_portWBA05_out_local.TChangeableMemPool._._._m_arrayPool._1_._elem._m_DE_SG_WBA_05_st._WBA_Status_aFB"
+              condition: becomes
+              value: 4
+          format: ".2f"      
+      - col_index: 4
+        header: "V_impact (km/h)"
+        source: trace_record    # 从 Trace Record Vimpact 列读取
+        format: ".3f"
+
+  "CPTA-LN-50_30kph":
+    table:
+      rows: 4
+      cols: 5
+    columns:
+      - col_index: 0
+        header: "Case"
+        source: fixed
+      - col_index: 1
+        header: "Result"
+        source: trace_record
+      - col_index: 2
+        header: "WBA Target Confirm TTC (s)"
+        description: "确认为目标时的TTC"
+        extract:
+          method: cross_reference
+          target: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_ttc._m_value"
+          triggers:
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_camConfirmation"
+              condition: equals
+              value: 1
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_radarConfirmation"
+              condition: equals
+              value: 1
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_targetObjType"
+              condition: equals
+              value: "pedestrian"
+          format: ".2f"  
+      - col_index: 3
+        header: "Brake Activated TTC (s)"
+        description: "Brake激活时的TTC"
+        extract:
+          method: cross_reference
+          target: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_ttc._m_value"
+          triggers:
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnablePostProc_SfRunnablePostProc_m_portWBA05_out_local.TChangeableMemPool._._._m_arrayPool._1_._elem._m_DE_SG_WBA_05_st._WBA_Status_aFB"
+              condition: becomes
+              value: 4
+          format: ".2f"      
+      - col_index: 4
+        header: "V_impact (km/h)"
+        source: trace_record    # 从 Trace Record Vimpact 列读取
+        format: ".3f"
+
+  "CPTA-LF-50_10kph":
+    table:
+      rows: 4
+      cols: 5
+    columns:
+      - col_index: 0
+        header: "Case"
+        source: fixed
+      - col_index: 1
+        header: "Result"
+        source: trace_record
+      - col_index: 2
+        header: "WBA Target Confirm TTC (s)"
+        description: "确认为目标时的TTC"
+        extract:
+          method: cross_reference
+          target: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_ttc._m_value"
+          triggers:
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_camConfirmation"
+              condition: equals
+              value: 1
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_radarConfirmation"
+              condition: equals
+              value: 1
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_targetObjType"
+              condition: equals
+              value: "pedestrian"
+          format: ".2f"  
+      - col_index: 3
+        header: "Brake Activated TTC (s)"
+        description: "Brake激活时的TTC"
+        extract:
+          method: cross_reference
+          target: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_ttc._m_value"
+          triggers:
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnablePostProc_SfRunnablePostProc_m_portWBA05_out_local.TChangeableMemPool._._._m_arrayPool._1_._elem._m_DE_SG_WBA_05_st._WBA_Status_aFB"
+              condition: becomes
+              value: 4
+          format: ".2f"      
+      - col_index: 4
+        header: "V_impact (km/h)"
+        source: trace_record    # 从 Trace Record Vimpact 列读取
+        format: ".3f"
+
+  "CPTA-LF-50_20kph":
+    table:
+      rows: 4
+      cols: 5
+    columns:
+      - col_index: 0
+        header: "Case"
+        source: fixed
+      - col_index: 1
+        header: "Result"
+        source: trace_record
+      - col_index: 2
+        header: "WBA Target Confirm TTC (s)"
+        description: "确认为目标时的TTC"
+        extract:
+          method: cross_reference
+          target: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_ttc._m_value"
+          triggers:
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_camConfirmation"
+              condition: equals
+              value: 1
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_radarConfirmation"
+              condition: equals
+              value: 1
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_targetObjType"
+              condition: equals
+              value: "pedestrian"
+          format: ".2f"  
+      - col_index: 3
+        header: "Brake Activated TTC (s)"
+        description: "Brake激活时的TTC"
+        extract:
+          method: cross_reference
+          target: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_ttc._m_value"
+          triggers:
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnablePostProc_SfRunnablePostProc_m_portWBA05_out_local.TChangeableMemPool._._._m_arrayPool._1_._elem._m_DE_SG_WBA_05_st._WBA_Status_aFB"
+              condition: becomes
+              value: 4
+          format: ".2f"      
+      - col_index: 4
+        header: "V_impact (km/h)"
+        source: trace_record    # 从 Trace Record Vimpact 列读取
+        format: ".3f"
+
+  "CPTA-LF-50_30kph":
+    table:
+      rows: 4
+      cols: 5
+    columns:
+      - col_index: 0
+        header: "Case"
+        source: fixed
+      - col_index: 1
+        header: "Result"
+        source: trace_record
+      - col_index: 2
+        header: "WBA Target Confirm TTC (s)"
+        description: "确认为目标时的TTC"
+        extract:
+          method: cross_reference
+          target: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_ttc._m_value"
+          triggers:
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_camConfirmation"
+              condition: equals
+              value: 1
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_radarConfirmation"
+              condition: equals
+              value: 1
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_targetObjType"
+              condition: equals
+              value: "pedestrian"
+          format: ".2f"  
+      - col_index: 3
+        header: "Brake Activated TTC (s)"
+        description: "Brake激活时的TTC"
+        extract:
+          method: cross_reference
+          target: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_ttc._m_value"
+          triggers:
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnablePostProc_SfRunnablePostProc_m_portWBA05_out_local.TChangeableMemPool._._._m_arrayPool._1_._elem._m_DE_SG_WBA_05_st._WBA_Status_aFB"
+              condition: becomes
+              value: 4
+          format: ".2f"      
+      - col_index: 4
+        header: "V_impact (km/h)"
+        source: trace_record    # 从 Trace Record Vimpact 列读取
+        format: ".3f"
+
+  # ============================================================
+  # 以下场景表格结构待补充，预留占位
+  # ============================================================
+  "CPNCO-25_20kph":
+    table:
+      rows: 4
+      cols: 5   # 待补充
+    columns:
+      - col_index: 0
+        header: "Case"
+        source: fixed
+      - col_index: 1
+        header: "Result"
+        source: trace_record
+      - col_index: 2
+        header: "WBA Target Confirm TTC (s)"
+        description: "确认为目标时的TTC"
+        extract:
+          method: cross_reference
+          target: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_ttc._m_value"
+          triggers:
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_camConfirmation"
+              condition: equals
+              value: 1
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_radarConfirmation"
+              condition: equals
+              value: 1
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_targetObjType"
+              condition: equals
+              value: "pedestrian"
+          format: ".2f"  
+      - col_index: 3
+        header: "Brake Activated TTC (s)"
+        description: "Brake激活时的TTC"
+        extract:
+          method: cross_reference
+          target: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_ttc._m_value"
+          triggers:
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnablePostProc_SfRunnablePostProc_m_portWBA05_out_local.TChangeableMemPool._._._m_arrayPool._1_._elem._m_DE_SG_WBA_05_st._WBA_Status_dFB"
+              condition: becomes
+              value: 4
+          format: ".2f"      
+      - col_index: 4
+        header: "V_impact (km/h)"
+        source: trace_record    # 从 Trace Record Vimpact 列读取
+        format: ".3f"
+
+  "CPNCO-25_40kph":
+    table:
+      rows: 4
+      cols: 5
+    columns:
+      - col_index: 0
+        header: "Case"
+        source: fixed
+      - col_index: 1
+        header: "Result"
+        source: trace_record
+      - col_index: 2
+        header: "WBA Target Confirm TTC (s)"
+        description: "确认为目标时的TTC"
+        extract:
+          method: cross_reference
+          target: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_ttc._m_value"
+          triggers:
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_camConfirmation"
+              condition: equals
+              value: 1
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_radarConfirmation"
+              condition: equals
+              value: 1
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_targetObjType"
+              condition: equals
+              value: "pedestrian"
+          format: ".2f"  
+      - col_index: 3
+        header: "Brake Activated TTC (s)"
+        description: "Brake激活时的TTC"
+        extract:
+          method: cross_reference
+          target: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_ttc._m_value"
+          triggers:
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnablePostProc_SfRunnablePostProc_m_portWBA05_out_local.TChangeableMemPool._._._m_arrayPool._1_._elem._m_DE_SG_WBA_05_st._WBA_Status_dFB"
+              condition: becomes
+              value: 4
+          format: ".2f"      
+      - col_index: 4
+        header: "V_impact (km/h)"
+        source: trace_record    # 从 Trace Record Vimpact 列读取
+        format: ".3f"
+
+  "CBNAO-50_20kph":
+    table:
+      rows: 4
+      cols: 5
+    columns: 
+      - col_index: 0
+        header: "Case"
+        source: fixed
+      - col_index: 1
+        header: "Result"
+        source: trace_record
+      - col_index: 2
+        header: "WBA Target Confirm TTC (s)"
+        description: "确认为目标时的TTC"
+        extract:
+          method: cross_reference
+          target: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_ttc._m_value"
+          triggers:
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_camConfirmation"
+              condition: equals
+              value: 1
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_radarConfirmation"
+              condition: equals
+              value: 1
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_targetObjType"
+              condition: equals
+              value: "pedestrian"
+          format: ".2f"  
+      - col_index: 3
+        header: "Brake Activated TTC (s)"
+        description: "Brake激活时的TTC"
+        extract:
+          method: cross_reference
+          target: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_ttc._m_value"
+          triggers:
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnablePostProc_SfRunnablePostProc_m_portWBA05_out_local.TChangeableMemPool._._._m_arrayPool._1_._elem._m_DE_SG_WBA_05_st._WBA_Status_dFB"
+              condition: becomes
+              value: 4
+          format: ".2f"      
+      - col_index: 4
+        header: "V_impact (km/h)"
+        source: trace_record    # 从 Trace Record Vimpact 列读取
+        format: ".3f"
+
+  "CBNAO-50_40kph":
+    table:
+      rows: 4
+      cols: 5
+    columns:
+      - col_index: 0
+        header: "Case"
+        source: fixed
+      - col_index: 1
+        header: "Result"
+        source: trace_record
+      - col_index: 2
+        header: "WBA Target Confirm TTC (s)"
+        description: "确认为目标时的TTC"
+        extract:
+          method: cross_reference
+          target: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_ttc._m_value"
+          triggers:
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_camConfirmation"
+              condition: equals
+              value: 1
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_radarConfirmation"
+              condition: equals
+              value: 1
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_targetObjType"
+              condition: equals
+              value: "pedestrian"
+          format: ".2f"  
+      - col_index: 3
+        header: "Brake Activated TTC (s)"
+        description: "Brake激活时的TTC"
+        extract:
+          method: cross_reference
+          target: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_ttc._m_value"
+          triggers:
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnablePostProc_SfRunnablePostProc_m_portWBA05_out_local.TChangeableMemPool._._._m_arrayPool._1_._elem._m_DE_SG_WBA_05_st._WBA_Status_dFB"
+              condition: becomes
+              value: 4
+          format: ".2f"      
+      - col_index: 4
+        header: "V_impact (km/h)"
+        source: trace_record    # 从 Trace Record Vimpact 列读取
+        format: ".3f"
+
+  "CBNAO-50_60kph":
+    table:
+      rows: 4
+      cols: 5
+    columns:
+      - col_index: 0
+        header: "Case"
+        source: fixed
+      - col_index: 1
+        header: "Result"
+        source: trace_record
+      - col_index: 2
+        header: "WBA Target Confirm TTC (s)"
+        description: "确认为目标时的TTC"
+        extract:
+          method: cross_reference
+          target: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_ttc._m_value"
+          triggers:
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_camConfirmation"
+              condition: equals
+              value: 1
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_radarConfirmation"
+              condition: equals
+              value: 1
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_targetObjType"
+              condition: equals
+              value: "pedestrian"
+          format: ".2f"  
+      - col_index: 3
+        header: "Brake Activated TTC (s)"
+        description: "Brake激活时的TTC"
+        extract:
+          method: cross_reference
+          target: "_g_Common_VAG_Function_SafetyFunctions_SfRunnableMainProc_SfRunnableMainProc_m_portMainProc_out_local.TChangeableMemPool._._._m_arrayPool._0_._elem.MainProcSfBase._._m_targetObjList._m_memory._m_values._0_._m_objectData._m_ttc._m_value"
+          triggers:
+            - signal: "_g_Common_VAG_Function_SafetyFunctions_SfRunnablePostProc_SfRunnablePostProc_m_portWBA05_out_local.TChangeableMemPool._._._m_arrayPool._1_._elem._m_DE_SG_WBA_05_st._WBA_Status_dFB"
+              condition: becomes
+              value: 4
+          format: ".2f"      
+      - col_index: 4
+        header: "V_impact (km/h)"
+        source: trace_record    # 从 Trace Record Vimpact 列读取
+        format: ".3f"
+
+  "C2C SCP_30kph":
+    table:
+      rows: 4
+      cols: 0
+    columns: []
+
+  "C2C SCP_40kph":
+    table:
+      rows: 4
+      cols: 0
+    columns: []
+
+  "C2C SCP_50kph":
+    table:
+      rows: 4
+      cols: 0
+    columns: []
+
+  "C2C SCP_60kph":
+    table:
+      rows: 4
+      cols: 0
+    columns: []

@@ -24,6 +24,7 @@ def cross_reference(
     end_time: Optional[float] = None,
     max_points: int = 1,
     triggers: Optional[List[Dict[str, Any]]] = None,
+    mdf=None,
 ) -> List[Dict[str, Any]]:
     """查找触发信号满足条件的时刻，并返回该时刻各目标信号的值。
 
@@ -68,7 +69,7 @@ def cross_reference(
     if triggers:
         return _cross_reference_multi(
             file_path, triggers, target_signals,
-            start_time, end_time, max_points, tolerance,
+            start_time, end_time, max_points, tolerance, mdf,
         )
 
     # 单触发模式
@@ -221,22 +222,29 @@ def _cross_reference_multi(
     end_time: Optional[float],
     max_points: int,
     tolerance: float,
+    mdf=None,
 ) -> List[Dict[str, Any]]:
     """多触发模式：所有触发条件同时满足的时刻。"""
-    with MDF(file_path) as mdf:
-        # 1. 提取所有涉及信号
+    # 允许复用已打开的 MDF 对象
+    def _extract(mdf_obj):
         trigger_signals = [t["signal"] for t in triggers]
         all_signals = list(dict.fromkeys(trigger_signals + target_signals))
-
         all_data: Dict[str, tuple] = {}
         for name in all_signals:
-            if name not in mdf.channels_db:
+            if name not in mdf_obj.channels_db:
                 raise KeyError(f"信号 '{name}' 在文件中不存在")
-            sig = mdf.get(name)
+            sig = mdf_obj.get(name)
             all_data[name] = (
                 sig.timestamps.astype(np.float64),
                 sig.samples,
             )
+        return all_data
+
+    if mdf is not None:
+        all_data = _extract(mdf)
+    else:
+        with MDF(file_path) as new_mdf:
+            all_data = _extract(new_mdf)
 
     # 2. 用第一个目标信号的时间轴作为公共时间线
     target_t = all_data[target_signals[0]][0]
