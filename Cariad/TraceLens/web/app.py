@@ -11,6 +11,7 @@ import re
 import sys
 import glob
 import time
+import importlib
 
 import streamlit as st
 
@@ -345,6 +346,7 @@ def render_report_generation_tab():
         status_text = st.empty()
 
         try:
+            st.info("正在生成报告，请稍候...")
             result_path = generate_report(
                 project_dir=project_dir,
                 template_path=template_path,

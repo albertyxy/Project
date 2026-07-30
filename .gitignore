@@ -5,6 +5,7 @@ logs/
 # Data
 data/
 Data/
+output/
 
 # Workspace
 workspace/

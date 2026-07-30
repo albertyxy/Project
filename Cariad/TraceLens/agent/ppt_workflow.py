@@ -142,8 +142,8 @@ def read_trace_record(excel_path: str) -> Dict[str, Dict[str, Any]]:
                 result = "Pass"
             elif raw.lower() == "collision":
                 result = "Collision"
-            elif raw.lower() == "failed":
-                result = "Failed"
+            elif raw.lower() == "fail":
+                result = "Fail"
             elif raw == "":
                 result = None
 
@@ -512,7 +512,7 @@ def fill_scenario_table(
     n_rows = len(raw_tbl.rows)
 
     # 分离 cross_reference 列和其他列
-    xref_cols = [c for c in columns if c.get("source") in ("", "cross_reference") and c.get("extract")]
+    xref_cols = [c for c in columns if c.get("source", "") in ("", "cross_reference") and c.get("extract")]
     other_cols = [c for c in columns if c not in xref_cols]
 
     # 处理 fixed / trace_record 列 (快)
@@ -540,10 +540,16 @@ def fill_scenario_table(
                     if result_val:
                         raw_tbl.set_cell_color(row_idx, col_idx,
                                                _result_color_hex(result_val))
+                    else:
+                        raw_tbl.clear_cell_color(row_idx, col_idx)
                 elif col_def.get("header", "").startswith("V_impact"):
                     vimpact = run_info.get("vimpact")
-                    fmt = col_def.get("format", ".3f")
-                    val = f"{vimpact:{fmt}}" if vimpact is not None else "/"
+                    if vimpact is not None:
+                        # 保留原始精度，但去除多余的 .0 后缀 (如 0.0 -> 0)
+                        raw = str(vimpact)
+                        val = raw.rstrip('0').rstrip('.') if '.' in raw else raw
+                    else:
+                        val = "/"
                     raw_tbl.set_cell_text(row_idx, col_idx, val)
                 else:
                     raw_tbl.set_cell_text(row_idx, col_idx, "/")
@@ -568,23 +574,67 @@ def fill_scenario_table(
                         extract_cfg = col_def.get("extract", {})
                         target_signal = extract_cfg.get("target", "")
                         triggers = extract_cfg.get("triggers", [])
+                        any_of = extract_cfg.get("any_of")
                         fmt = extract_cfg.get("format", ".2f")
                         col_idx = col_def["col_index"]
 
                         try:
-                            result = cross_reference(
-                                file_path=mf4_path,
-                                target_signals=[target_signal],
-                                triggers=triggers,
-                                max_points=1,
-                                mdf=mdf,
-                            )
-                            if result and len(result) > 0:
-                                val = result[0]["targets"].get(target_signal)
-                                raw_tbl.set_cell_text(row_idx, col_idx,
-                                                      f"{float(val):{fmt}}" if val is not None else "/")
+                            # 确定 trigger 组列表
+                            trigger_groups = []
+                            if any_of:
+                                for group in any_of:
+                                    trigger_groups.append(group.get("triggers", []))
                             else:
-                                raw_tbl.set_cell_text(row_idx, col_idx, "/")
+                                trigger_groups.append(triggers)
+
+                            min_duration = extract_cfg.get("min_duration")
+                            max_pts = 50 if min_duration else 1
+                            best_val = None
+
+                            for tg in trigger_groups:
+                                result = cross_reference(
+                                    file_path=mf4_path,
+                                    target_signals=[target_signal],
+                                    triggers=tg,
+                                    max_points=max_pts,
+                                    mdf=mdf,
+                                )
+                                if not result:
+                                    continue
+
+                                if min_duration:
+                                    # 时长校验: 区间内所有采样点都满足条件
+                                    for hit in result:
+                                        val = hit["targets"].get(target_signal)
+                                        if val is None or abs(float(val)) >= 1e10:
+                                            continue  # 跳过无效 TTC
+                                        if _triggers_hold_interval(mdf, tg, hit["timestamp"], min_duration):
+                                            best_val = val
+                                            break
+                                else:
+                                    # 无时长校验: 取第一个有效 TTC
+                                    for hit in result:
+                                        val = hit["targets"].get(target_signal)
+                                        if val is None or abs(float(val)) >= 1e10:
+                                            continue
+                                        best_val = val
+                                        break
+
+                                if best_val is not None:
+                                    break
+
+                            if best_val is not None:
+                                raw_tbl.set_cell_text(row_idx, col_idx,
+                                                      f"{float(best_val):{fmt}}")
+                            else:
+                                # Brake Activated TTC: Collision/Fail 时无值 → "not activated" (红色)
+                                header = col_def.get("header", "")
+                                result_val = runs_data.get(run_key, {}).get("result")
+                                if "Brake Activated" in header and result_val in ("Collision", "Fail"):
+                                    raw_tbl.set_cell_text(row_idx, col_idx, "not activated")
+                                    raw_tbl.set_cell_color(row_idx, col_idx, "FF0000")
+                                else:
+                                    raw_tbl.set_cell_text(row_idx, col_idx, "/")
                         except Exception:
                             raw_tbl.set_cell_text(row_idx, col_idx, "/")
             except Exception:
@@ -614,7 +664,7 @@ def _color_first_run(cell, result_val: Optional[str]) -> None:
         runs[0].font.color.rgb = COLOR_GREEN
     elif result_val == "Collision":
         runs[0].font.color.rgb = COLOR_ORANGE
-    elif result_val == "Failed":
+    elif result_val == "Fail":
         runs[0].font.color.rgb = COLOR_RED
     else:
         runs[0].font.color.rgb = COLOR_GRAY
@@ -694,6 +744,21 @@ class _RawTable:
         else:
             srgbClr.set('val', color_hex)
 
+    def clear_cell_color(self, row_idx: int, col_idx: int) -> None:
+        """清除单元格第一个 run 的文字颜色，恢复模版默认。"""
+        tc = self._get_tc(row_idx, col_idx)
+        if tc is None:
+            return
+        runs = tc.findall(f'.//{{{_A_NS}}}r')
+        if not runs:
+            return
+        rPr = runs[0].find(f'{{{_A_NS}}}rPr')
+        if rPr is None:
+            return
+        solidFill = rPr.find(f'{{{_A_NS}}}solidFill')
+        if solidFill is not None:
+            rPr.remove(solidFill)
+
     def _get_tc(self, row_idx: int, col_idx: int):
         tr_list = self._tbl.findall(f'{{{_A_NS}}}tr')
         if row_idx >= len(tr_list):
@@ -734,10 +799,73 @@ def _result_color_hex(result_val: Optional[str]) -> str:
         return "00B050"
     elif result_val == "Collision":
         return "FF8C00"
-    elif result_val == "Failed":
+    elif result_val == "Fail":
         return "FF0000"
     else:
         return "999999"
+
+
+def _triggers_hold_interval(mdf, triggers: List[Dict], t_start: float,
+                             min_duration: float, tolerance: float = 1e-6) -> bool:
+    """检查 [t_start, t_start+min_duration] 区间内所有采样点是否都满足触发条件。
+
+    Args:
+        mdf: 已打开的 MDF 对象
+        triggers: 触发条件列表
+        t_start: 起始时刻 (秒)
+        min_duration: 最短持续时间 (秒)
+        tolerance: 数值型 equals 容差
+
+    Returns:
+        True 如果区间内所有采样点都满足条件
+    """
+    import numpy as np
+    t_end = t_start + min_duration
+
+    for trig in triggers:
+        signal_name = trig.get("signal", "")
+        if signal_name not in mdf.channels_db:
+            return False
+        sig = mdf.get(signal_name)
+        ts = sig.timestamps.astype(np.float64)
+        samples = sig.samples
+        cond = trig.get("condition", "equals")
+        target_val = trig.get("value")
+        threshold = trig.get("threshold")
+
+        # 找区间内所有采样点索引
+        mask = (ts >= t_start) & (ts <= t_end)
+        interval_samples = samples[mask]
+
+        if len(interval_samples) == 0:
+            return False
+
+        if cond == "equals":
+            if target_val is not None:
+                if np.issubdtype(samples.dtype, np.number):
+                    if not np.all(np.abs(interval_samples.astype(float) - float(target_val)) <= tolerance):
+                        return False
+                else:
+                    tgt = target_val.decode("utf-8") if isinstance(target_val, bytes) else str(target_val)
+                    for s in interval_samples:
+                        actual = s.decode("utf-8") if isinstance(s, bytes) else str(s)
+                        if actual != tgt:
+                            return False
+        elif cond == "becomes":
+            if target_val is not None:
+                if np.issubdtype(samples.dtype, np.number):
+                    if not np.all(np.abs(interval_samples.astype(float) - float(target_val)) <= tolerance):
+                        return False
+        elif cond == "above":
+            if not np.all(interval_samples.astype(float) > float(threshold)):
+                return False
+        elif cond == "below":
+            if not np.all(interval_samples.astype(float) < float(threshold)):
+                return False
+        elif cond == "edge":
+            pass  # edge 条件在区间检查中不适用
+
+    return True
 
 
 # ============================================================================
@@ -774,7 +902,7 @@ def fill_scenario_text(slide, scenario_name: str, run_data: Dict[str, Any]) -> N
     """
     text_box = None
     for shape in slide.shapes:
-        if shape.has_text_frame and shape.name == "文本框 2":
+        if shape.has_text_frame and shape.name.startswith("文本框"):
             text_box = shape
             break
     if text_box is None:
@@ -919,9 +1047,9 @@ def _replace_result_para(para, run_key: str, run_info: dict):
             r2.font.size = _TEXT_SIZE
             r2.font.color.rgb = _TEXT_BODY_COLOR
 
-    elif result_val == "Failed":
+    elif result_val == "Fail":
         r = para.add_run()
-        r.text = "Failed"
+        r.text = "Fail"
         r.font.size = _TEXT_SIZE
         r.font.color.rgb = COLOR_RED
 
@@ -929,7 +1057,6 @@ def _replace_result_para(para, run_key: str, run_info: dict):
         r = para.add_run()
         r.text = "/"
         r.font.size = _TEXT_SIZE
-        r.font.color.rgb = COLOR_GRAY
 
 
 # ============================================================================
